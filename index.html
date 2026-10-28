@@ -157,8 +157,19 @@ kbd {
 .menu-title i { color: var(--pink); font-style: normal; text-shadow: 0 0 18px var(--pink); }
 .menu-sub { color: var(--dim); letter-spacing: 0.08em; margin-bottom: 22px; text-align: center; }
 .menu-main { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.menu-modes { width: min(460px, 92vw); padding-bottom: 12px; border-color: rgba(0,240,255,.35); box-shadow: 0 0 45px rgba(0,240,255,.10), 0 0 55px rgba(255,46,151,.07); }
+.menu-modes { width: min(460px, 92vw); max-height: 86vh; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 12px; border-color: rgba(0,240,255,.35); box-shadow: 0 0 45px rgba(0,240,255,.10), 0 0 55px rgba(255,46,151,.07); }
     .mode-intro { padding: 14px 16px 4px; text-align: center; color: var(--dim); font-size: 11px; line-height: 1.6; }
+    .mode-ai { padding: 14px 16px 8px; }
+    .mode-ai .slider { grid-template-columns: 1fr minmax(70px, 130px) 24px; }
+    .keybind-title { margin: 4px 0 -5px; padding-top: 10px; border-top: 1px solid rgba(112,145,205,.22); font-size: 10px; letter-spacing: 2px; color: var(--cyan); }
+    .keybind-list { display: flex; flex-direction: column; gap: 6px; max-height: 225px; overflow: auto; padding-right: 3px; }
+    .keybind-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; min-height: 34px; padding: 5px 8px; border: 1px solid rgba(112,145,205,.18); background: rgba(5,10,23,.46); border-radius: 4px; }
+    .keybind-row span { font-size: 10px; letter-spacing: .7px; color: var(--dim); }
+    .keybind-row button { min-width: 88px; padding: 7px 10px; border: 1px solid rgba(0,240,255,.38); border-radius: 3px; background: rgba(0,240,255,.08); color: #fff; font: 800 10px ui-monospace, monospace; cursor: pointer; }
+    .keybind-row button.listening { border-color: var(--pink); background: rgba(255,46,151,.15); color: #fff; animation: bindPulse 1s ease-in-out infinite alternate; }
+    @keyframes bindPulse { from { box-shadow: 0 0 0 rgba(255,46,151,0); } to { box-shadow: 0 0 12px rgba(255,46,151,.3); } }
+    .keybind-actions { display: flex; gap: 8px; }
+    .keybind-actions .btn { flex: 1; }
     .mode-options { display: flex; flex-direction: column; gap: 9px; padding: 12px 14px 0; }
     .mode-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; padding: 14px 16px; text-align: left; color: var(--text); cursor: pointer; background: linear-gradient(100deg, rgba(0,240,255,.09), rgba(255,46,151,.04)); border: 1px solid #283664; border-radius: 5px; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
     .mode-card:hover { transform: translateY(-2px); border-color: var(--cyan); box-shadow: 0 0 18px rgba(0,240,255,.14); }
@@ -172,7 +183,7 @@ kbd {
     .boil-btn { background: none; border: 0; padding: 10px 26px; cursor: pointer; border-radius: 6px; line-height: 0; }
 .boil-btn canvas { display: block; image-rendering: pixelated; max-width: 80vw; height: auto; }
 .boil-btn:focus-visible { outline: 2px dashed var(--cyan); outline-offset: 4px; }
-.menu-settings { width: min(420px, 92vw); }
+.menu-settings { width: min(420px, 92vw); max-height: 86vh; overflow-y: auto; overscroll-behavior: contain; }
 .set-body { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
 .set-body .slider { grid-template-columns: 1fr 140px 30px; }
 .check { display: flex; align-items: center; gap: 10px; font-size: 12px; cursor: pointer; }
@@ -302,12 +313,12 @@ kbd {
         </div>
         <div class="bar-row"><span>HULL</span><div class="bar hp"><i id="hpFill"></i><b id="hpText">100</b></div></div>
         <div class="bar-row"><span>CHARGE</span><div class="bar cd"><i id="cdFill"></i></div></div>
-        <button id="forgeBtn" class="btn primary wide" type="button">DRAW WEAPON <kbd>E</kbd></button>
+        <button id="forgeBtn" class="btn primary wide" type="button">DRAW WEAPON <kbd id="drawKeyHint">E</kbd></button>
       </section>
 
       <aside id="toolbar" class="panel">
         <div class="panel-title">CARTOGRAPHY <span id="hostTag" class="tag">HOST</span></div>
-        <button id="paintToggle" class="btn wide" type="button">PAINT MODE <kbd>P</kbd></button>
+        <button id="paintToggle" class="btn wide" type="button">PAINT MODE <kbd id="editorKeyHint">P</kbd></button>
         <div id="brushes">
           <button class="brush active" data-brush="1" type="button"><i class="sw sw-wall"></i><span>Wall</span><kbd>1</kbd></button>
           <button class="brush" data-brush="2" type="button"><i class="sw sw-boost"></i><span>Boost lane</span><kbd>2</kbd></button>
@@ -338,8 +349,8 @@ kbd {
       <div id="connecting" class="hidden">CONNECTING TO MATCH...</div>
 
       <div id="hint">
-        <kbd>WASD</kbd> move <kbd>Mouse</kbd> aim <kbd>Click / Space</kbd> attack
-        <kbd>E</kbd> draw weapon <kbd>P</kbd> paint map <kbd>1-6</kbd> brushes <kbd>Wheel</kbd> brush size <kbd>Esc</kbd> menu
+        <kbd id="hintMove">W/A/S/D</kbd> move <kbd>Mouse</kbd> aim <kbd id="hintFire">Click / SPACE</kbd> attack
+        <kbd id="hintDraw">E</kbd> draw weapon <kbd id="hintPaint">P</kbd> paint map <kbd id="hintBrushes">1/2/3/4/5/6</kbd> brushes <kbd>Wheel</kbd> brush size <kbd id="hintPause">ESC</kbd> menu
       </div>
 
       <div id="toastLayer"></div>
@@ -359,6 +370,9 @@ kbd {
         <div id="menuModes" class="panel menu-modes hidden">
           <div class="panel-title">CHOOSE YOUR RUN <span class="tag">DEPLOY</span></div>
           <div class="mode-intro">Every life starts at the forge. Draw a weapon to deploy, then survive the arena.</div>
+          <div class="set-body mode-ai">
+            <label class="slider"><span>AI OPPONENTS</span><input id="setAiCount" type="range" min="0" max="12" step="1"><b id="setAiCountLabel">3</b></label>
+          </div>
           <div class="mode-options">
             <button id="menuSoloBtn" class="mode-card" type="button">
               <span><span class="mode-name">SINGLE PLAYER</span><span class="mode-detail">Play offline with AI pilots. No room link required.</span></span>
@@ -380,10 +394,12 @@ kbd {
             <label class="slider"><span>PARTICLE DENSITY</span><input id="setFx" type="range" min="0" max="100" step="5"><b id="setFxLabel">100</b></label>
             <label class="check"><input id="setSprites" type="checkbox"><span>Pixel-art weapon and effect sprites</span></label>
             <label class="check"><input id="setBoil" type="checkbox"><span>Line boil animation on menu titles</span></label>
-            <button id="menuBack" class="btn wide" type="button">BACK</button>
+            <div class="keybind-title">CUSTOM KEYBINDS</div>
+            <div class="keybind-list" id="keybindRows"></div>
+            <div class="keybind-actions"><button id="resetBinds" class="btn ghost" type="button">RESET KEYS</button><button id="menuBack" class="btn wide" type="button">BACK</button></div>
           </div>
         </div>
-        <div class="menu-foot"><kbd>Esc</kbd> opens this menu any time</div>
+        <div class="menu-foot"><kbd id="menuPauseHint">Esc</kbd> opens this menu any time</div>
       </div>
     </div>
 
@@ -1117,6 +1133,42 @@ const DrawPad = (function () {
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 4600);
   }
 
+  function exportWeaponArt() {
+    const w = pad.width, h = pad.height, data = pctx.getImageData(0, 0, w, h).data;
+    let minX = w, minY = h, maxX = -1, maxY = -1, sumX = 0, sumY = 0, pixels = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] > 35) {
+        if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
+        sumX += x; sumY += y; pixels++;
+      }
+    }
+    if (maxX < minX || maxY < minY) return null;
+    const padPx = 5, cw = maxX - minX + 1, ch = maxY - minY + 1;
+    const crop = document.createElement('canvas'); crop.width = cw + padPx * 2; crop.height = ch + padPx * 2;
+    const cc = crop.getContext('2d'); cc.drawImage(pad, minX, minY, cw, ch, padPx, padPx, cw, ch);
+    /* Align the drawing's main axis with the aiming direction while preserving
+       the original hand-drawn silhouette and its details. */
+    const meanX = sumX / Math.max(1, pixels), meanY = sumY / Math.max(1, pixels);
+    let cxx = 0, cyy = 0, cxy = 0;
+    for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) if (data[(y * w + x) * 4 + 3] > 35) {
+      const dx = x - meanX, dy = y - meanY; cxx += dx * dx; cyy += dy * dy; cxy += dx * dy;
+    }
+    let theta = 0;
+    if (Math.abs(cxx - cyy) > 0.025 * (cxx + cyy)) theta = 0.5 * Math.atan2(2 * cxy, cxx - cyy);
+    let oriented = crop;
+    if (Math.abs(theta) > 0.06) {
+      const ca = Math.abs(Math.cos(theta)), sa = Math.abs(Math.sin(theta));
+      const rw = Math.ceil(crop.width * ca + crop.height * sa), rh = Math.ceil(crop.width * sa + crop.height * ca);
+      const rot = document.createElement('canvas'); rot.width = rw; rot.height = rh;
+      const rc = rot.getContext('2d'); rc.translate(rw / 2, rh / 2); rc.rotate(-theta);
+      rc.drawImage(crop, -crop.width / 2, -crop.height / 2); oriented = rot;
+    }
+    const scale = Math.min(1, 128 / Math.max(oriented.width, oriented.height));
+    const out = document.createElement('canvas'); out.width = Math.max(1, Math.round(oriented.width * scale)); out.height = Math.max(1, Math.round(oriented.height * scale));
+    out.getContext('2d').drawImage(oriented, 0, 0, out.width, out.height);
+    try { return out.toDataURL('image/png'); } catch (_) { return null; }
+  }
+
   function equip() {
     if (busy) return;
     if (!strokes.length) {
@@ -1128,8 +1180,9 @@ const DrawPad = (function () {
       const res = Classifier.analyzeCanvas(pad);
       overlay.classList.add('hidden'); busy = false;
       if (res.type) {
+        const artwork = exportWeaponArt();
         close(true); showToast(res);
-        if (cfg.onEquip) cfg.onEquip(res.type, res);
+        if (cfg.onEquip) cfg.onEquip(res.type, res, artwork);
       } else showToast(res);
     }, 1600);
   }
@@ -1229,11 +1282,19 @@ const Sprites = (function () {
 
 const Settings = (function () {
   const reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const S = { vol: 70, shake: 100, fx: 100, sprites: true, boil: !reduced };
+  const DEFAULT_BINDS = { moveUp:'KeyW', moveDown:'KeyS', moveLeft:'KeyA', moveRight:'KeyD', fire:'Space', drawWeapon:'KeyE', pause:'Escape', toggleEditor:'KeyP', paintWall:'Digit1', paintBoost:'Digit2', paintAcid:'Digit3', paintIce:'Digit4', paintHeal:'Digit5', erase:'Digit6' };
+  const S = { vol: 70, shake: 100, fx: 100, sprites: true, boil: !reduced, aiCount: 3, keybinds: Object.assign({}, DEFAULT_BINDS) };
   try {
     const raw = window.localStorage.getItem('ccc.settings');
-    if (raw) { const o = JSON.parse(raw); Object.keys(S).forEach(function (k) { if (k in o && typeof o[k] === typeof S[k]) S[k] = o[k]; }); }
+    if (raw) {
+      const o = JSON.parse(raw);
+      Object.keys(S).forEach(function (k) { if (k !== 'keybinds' && k in o && typeof o[k] === typeof S[k]) S[k] = o[k]; });
+      if (o.keybinds && typeof o.keybinds === 'object') Object.keys(DEFAULT_BINDS).forEach(function (k) {
+        if (typeof o.keybinds[k] === 'string' && /^[A-Za-z0-9]+$/.test(o.keybinds[k])) S.keybinds[k] = o.keybinds[k];
+      });
+    }
   } catch (e) { /* storage unavailable: keep defaults */ }
+  S.aiCount = Math.max(0, Math.min(12, Math.round(Number(S.aiCount) || 0)));
   Object.defineProperty(S, 'save', {
     enumerable: false,
     value: function () { try { window.localStorage.setItem('ccc.settings', JSON.stringify(S)); } catch (e) { /* ignore */ } }
@@ -1332,6 +1393,15 @@ const Menu = (function () {
         if (cfg.onChange) cfg.onChange(r[1]);
       });
     });
+    const aiInput = $('setAiCount'), aiLabel = $('setAiCountLabel');
+    if (aiInput && aiLabel) {
+      aiInput.value = Settings.aiCount; aiLabel.textContent = Settings.aiCount;
+      aiInput.addEventListener('input', function () {
+        Settings.aiCount = Math.max(0, Math.min(12, +aiInput.value || 0));
+        aiLabel.textContent = String(Settings.aiCount); Settings.save();
+      });
+      aiInput.addEventListener('change', function () { if (cfg.onChange) cfg.onChange('aiCount'); });
+    }
   }
 
   function init(opts) {
@@ -1377,6 +1447,15 @@ const Menu = (function () {
   /* ------------------------------------------------------------------ */
   const W = 1280, H = 720, CELL = 20, COLS = 64, ROWS = 36, R = 12, TAU = Math.PI * 2, STEP = 1 / 60;
   const T = { EMPTY: 0, WALL: 1, BOOST: 2, ACID: 3, ICE: 4, HEAL: 5 };
+  const KEY_ACTIONS = [
+    { id:'moveUp', label:'MOVE UP' }, { id:'moveDown', label:'MOVE DOWN' },
+    { id:'moveLeft', label:'MOVE LEFT' }, { id:'moveRight', label:'MOVE RIGHT' },
+    { id:'fire', label:'ATTACK / FIRE' }, { id:'drawWeapon', label:'DRAW WEAPON' },
+    { id:'pause', label:'PAUSE / MENU' }, { id:'toggleEditor', label:'TOGGLE MAP EDITOR' },
+    { id:'paintWall', label:'PAINT WALL' }, { id:'paintBoost', label:'PAINT SPEED TILE' },
+    { id:'paintAcid', label:'PAINT ACID' }, { id:'paintIce', label:'PAINT ICE' },
+    { id:'paintHeal', label:'PAINT HEAL TILE' }, { id:'erase', label:'ERASE TILE' }
+  ];
   const PALETTE = ['#ff2e97', '#00f0ff', '#b4ff39', '#ffb000', '#a66bff', '#ff5f5f', '#39ffb6', '#ff8a00'];
   const BOT_NAMES = ['NEON-7', 'GLITCH', 'VANTA', 'CIPHER', 'ROGUE', 'KILOBYTE'];
 
@@ -1387,7 +1466,7 @@ const Menu = (function () {
     shake: 0, time: 0, nextId: 1, tick: 0, paint: false, brush: T.WALL, brushSize: 2,
     mouse: { x: W / 2, y: H / 2, down: false, right: false, lx: null, ly: null },
     keys: {}, botsOn: true, modalOpen: false, menu: false, pad: false, attract: false, killfeed: [], lastSnap: 0,
-    roundsDrawEnabled: false
+    roundsDrawEnabled: false, weaponArts: new Map(), weaponArtImages: new Map()
   };
   let pendingInitialDraw = false, lastSelfDead = null;
   window.Game = G;
@@ -1418,6 +1497,22 @@ const Menu = (function () {
     G.fx.push({ k: 'spr', name: name, x: x, y: y, rot: rot, sc: sc, life: life, max: life });
   }
   function ev(e) { G.events.push(e); }
+  function bindCode(action) {
+    const code = Settings.keybinds && Settings.keybinds[action];
+    return typeof code === 'string' && code ? code : ({ moveUp:'KeyW', moveDown:'KeyS', moveLeft:'KeyA', moveRight:'KeyD', fire:'Space', drawWeapon:'KeyE', pause:'Escape', toggleEditor:'KeyP', paintWall:'Digit1', paintBoost:'Digit2', paintAcid:'Digit3', paintIce:'Digit4', paintHeal:'Digit5', erase:'Digit6' }[action]);
+  }
+  function keyDown(action) { return !!G.keys[bindCode(action)]; }
+  function setWeaponArt(id, data) {
+    if (typeof id !== 'string' || !id) return;
+    if (typeof data !== 'string' || data.indexOf('data:image/png;base64,') !== 0 || data.length > 55000) {
+      G.weaponArts.delete(id); G.weaponArtImages.delete(id); return;
+    }
+    G.weaponArts.set(id, data);
+    const img = new Image();
+    img.onload = function () { /* render loop automatically picks up the loaded art */ };
+    img.onerror = function () { G.weaponArtImages.delete(id); };
+    img.src = data; G.weaponArtImages.set(id, img);
+  }
 
   /* ------------------------------------------------------------------ */
   /* tile map                                                            */
@@ -1511,19 +1606,13 @@ const Menu = (function () {
   /* ------------------------------------------------------------------ */
   function blankPlayer(id, name, color) {
     return {
-      id: id, name: name, color: color, bot: false, x: W / 2, y: H / 2, tx: W / 2, ty: H / 2, vx: 0, vy: 0, a: 0,
+      id: id, name: name, color: color, bot: false, x: W / 2, y: 580, tx: W / 2, ty: 580, vx: 0, vy: 0, a: 0, face: 1, grounded: true, jumps: 0,
       hp: 100, max: 100, weapon: 'gun', cd: 0, dead: false, rt: 0, score: 0, deaths: 0,
       shieldT: 0, shieldAge: 0, acidT: 0, healT: 0, slowed: false,
       inp: { mx: W / 2, my: H / 2, u: 0, d: 0, l: 0, r: 0, f: 0 }, ai: { t: 0, strafe: 1, err: 0 }
     };
   }
-  function spawnPoint() {
-    for (let i = 0; i < 80; i++) {
-      const x = rnd(60, W - 60), y = rnd(60, H - 60), tl = tileAt(x, y);
-      if (!hitsWall(x, y, R + 6) && tl !== T.ACID) return { x: x, y: y };
-    }
-    return { x: W / 2, y: H / 2 };
-  }
+  function spawnPoint() { return { x: rnd(150, W-150), y: 580 }; }
   function addPlayer(id, name, bot) {
     const color = PALETTE[G.players.size % PALETTE.length];
     const p = blankPlayer(id, name, color);
@@ -1535,12 +1624,13 @@ const Menu = (function () {
   }
   function randomWeapon() { return WEAPON_ORDER[Math.floor(Math.random() * WEAPON_ORDER.length)]; }
   function setBots(on) {
-    G.botsOn = on;
+    G.botsOn = !!on;
     const bots = [];
     G.players.forEach(function (p) { if (p.bot) bots.push(p.id); });
     bots.forEach(function (id) { G.players.delete(id); });
-    if (on) for (let i = 0; i < 3; i++) addPlayer('bot' + (G.nextId++), BOT_NAMES[i % BOT_NAMES.length], true);
-    const b = $('botsToggle'); if (b) { b.textContent = 'BOTS: ' + (on ? 'ON' : 'OFF'); b.classList.toggle('on', on); }
+    const count = G.botsOn ? Math.max(0, Math.min(12, Math.round(Settings.aiCount || 0))) : 0;
+    for (let i = 0; i < count; i++) addPlayer('bot' + (G.nextId++), BOT_NAMES[i % BOT_NAMES.length] + (i >= BOT_NAMES.length ? '-' + (i + 1) : ''), true);
+    const b = $('botsToggle'); if (b) { b.textContent = 'AI: ' + count; b.classList.toggle('on', G.botsOn && count > 0); }
   }
   function respawn(p) {
     const s = spawnPoint();
@@ -1645,46 +1735,20 @@ const Menu = (function () {
   }
 
   function updatePlayer(p, dt) {
-    if (p.dead) { p.rt -= dt; if (p.rt <= 0) respawn(p); return; }
-    const w = WEAPONS[p.weapon], inp = p.inp;
-    p.cd = Math.max(0, p.cd - dt);
-    p.shieldT = Math.max(0, p.shieldT - dt); p.shieldAge += dt;
-    if (Math.hypot(inp.mx - p.x, inp.my - p.y) > 3) p.a = Math.atan2(inp.my - p.y, inp.mx - p.x);
-
-    const tile = tileAt(p.x, p.y);
-    p.slowed = false;
-    for (let i = 0; i < G.waves.length; i++) {
-      const sw = G.waves[i];
-      if (sw.o !== p.id && Math.hypot(p.x - sw.x, p.y - sw.y) < sw.r) { p.slowed = true; break; }
-    }
-    let maxV = 250 * w.speedMul, damp = 10;
-    if (tile === T.BOOST) maxV *= 2.2;                       /* speed lane: higher cap + proportional acceleration */
-    if (p.slowed) { maxV *= 0.45; }
-    let ix = (inp.r ? 1 : 0) - (inp.l ? 1 : 0), iy = (inp.d ? 1 : 0) - (inp.u ? 1 : 0);
-    const il = Math.hypot(ix, iy); if (il > 0) { ix /= il; iy /= il; }
-    let accel;
-    if (tile === T.ICE) { damp = 0; accel = 900; }          /* frictionless: zero damping, weak steering */
-    else accel = maxV * damp;
-    p.vx += ix * accel * dt; p.vy += iy * accel * dt;
-    if (damp > 0) { const k = Math.exp(-damp * dt); p.vx *= k; p.vy *= k; }
-    const sp = Math.hypot(p.vx, p.vy), cap = tile === T.ICE ? 560 : maxV * 1.02;
-    if (sp > cap) { const s = tile === T.ICE ? cap / sp : Math.max(cap / sp, 1 - 8 * dt); p.vx *= s; p.vy *= s; }
-
-    const nx = p.x + p.vx * dt;
-    if (!hitsWall(nx, p.y, R)) p.x = nx; else p.vx = tile === T.ICE ? -p.vx * 0.7 : 0;
-    const ny = p.y + p.vy * dt;
-    if (!hitsWall(p.x, ny, R)) p.y = ny; else p.vy = tile === T.ICE ? -p.vy * 0.7 : 0;
-
-    if (tile === T.ACID) {
-      p.acidT += dt;
-      while (p.acidT >= 0.25) { p.acidT -= 0.25; p.hp -= 3.5; if (p.hp <= 0) { kill(p, null); break; } }
-    } else p.acidT = 0;
-    if (!p.dead && tile === T.HEAL) {
-      p.healT += dt;
-      while (p.healT >= 0.25) { p.healT -= 0.25; p.hp = Math.min(p.max, p.hp + 4); }
-    } else p.healT = 0;
-
-    if (!p.dead && inp.f) tryFire(p);
+    if(p.dead){p.rt-=dt;if(p.rt<=0)respawn(p);return;}
+    const w=WEAPONS[p.weapon],inp=p.inp;p.cd=Math.max(0,p.cd-dt);p.shieldT=Math.max(0,p.shieldT-dt);p.shieldAge+=dt;
+    let ix=(inp.r?1:0)-(inp.l?1:0);if(ix) p.face=ix>0?1:-1;
+    p.a=p.face>0?0:Math.PI;
+    const accel=1250, maxV=235*w.speedMul;
+    p.vx+=ix*accel*dt;if(!ix)p.vx*=Math.exp(-7*dt);p.vx=clamp(p.vx,-maxV,maxV);p.x+=p.vx*dt;
+    p.x=clamp(p.x,28,W-28);
+    // jump uses the configured UP key; gravity and ledges create platform-fighter movement
+    if(inp.u && p.grounded){p.vy=-440;p.grounded=false;p.jumps=1;}
+    p.vy+=1050*dt;p.y+=p.vy*dt;p.grounded=false;
+    const platforms=[{x:0,y:580,w:W},{x:270,y:440,w:210},{x:800,y:440,w:210},{x:525,y:350,w:230}];
+    platforms.forEach(pl=>{if(p.vy>=0&&p.x>=pl.x-12&&p.x<=pl.x+pl.w+12&&p.y>=pl.y&&p.y-p.vy*dt<=pl.y){p.y=pl.y;p.vy=0;p.grounded=true;}});
+    if(p.y>H+90){p.x=rnd(120,W-120);p.y=580;p.vx=0;p.vy=0;p.grounded=true;p.hp-=8;}
+    if(!p.dead&&inp.f)tryFire(p);
   }
 
   function separatePlayers() {
@@ -1722,7 +1786,7 @@ const Menu = (function () {
       for (let s = 0; s < steps && !removed; s++) {
         const nx = p.x + p.vx * sdt, ny = p.y + p.vy * sdt;
         p.dist += sp * sdt;
-        if (solidAt(nx, ny)) {
+        if (false && solidAt(nx, ny)) {
           ev({ k: 'wall', x: p.x, y: p.y });
           if (p.bounces > 0) {
             const bx = solidAt(nx, p.y), by = solidAt(p.x, ny);
@@ -1776,7 +1840,7 @@ const Menu = (function () {
     if (bd > pref + 30) { mx = Math.cos(ang); my = Math.sin(ang); }
     else if (ranged && bd < pref - 70) { mx = -Math.cos(ang); my = -Math.sin(ang); }
     mx += -Math.sin(ang) * p.ai.strafe * 0.7; my += Math.cos(ang) * p.ai.strafe * 0.7;
-    inp.l = mx < -0.3 ? 1 : 0; inp.r = mx > 0.3 ? 1 : 0; inp.u = my < -0.3 ? 1 : 0; inp.d = my > 0.3 ? 1 : 0;
+    inp.l = mx < -0.3 ? 1 : 0; inp.r = mx > 0.3 ? 1 : 0; inp.u = (tgt.y < p.y-55 && p.grounded && Math.random()<0.04) ? 1 : 0; inp.d = 0;
     inp.mx = p.x + Math.cos(ang + p.ai.err) * 200; inp.my = p.y + Math.sin(ang + p.ai.err) * 200;
     const reach = ranged ? 560 : (w.range || 80) + 22;
     inp.f = (bd < reach && losClear(p.x, p.y, tgt.x, tgt.y)) ? 1 : 0;
@@ -1832,27 +1896,29 @@ const Menu = (function () {
   }
 
   function getInput() {
-    const k = G.keys, m = G.mouse;
+    const m = G.mouse;
     return {
       t: 'in', mx: Math.round(m.x), my: Math.round(m.y),
-      u: (k.KeyW || k.ArrowUp) ? 1 : 0, d: (k.KeyS || k.ArrowDown) ? 1 : 0,
-      l: (k.KeyA || k.ArrowLeft) ? 1 : 0, r: (k.KeyD || k.ArrowRight) ? 1 : 0,
-      f: ((m.down && !G.paint) || k.Space) && !G.modalOpen ? 1 : 0
+      u: keyDown('moveUp') ? 1 : 0, d: keyDown('moveDown') ? 1 : 0,
+      l: keyDown('moveLeft') ? 1 : 0, r: keyDown('moveRight') ? 1 : 0,
+      f: ((m.down && !G.paint) || keyDown('fire')) && !G.modalOpen ? 1 : 0
     };
   }
-  function equipWeapon(type) {
+  function equipWeapon(type, result, artwork) {
     if (!WEAPONS[type]) return;
     if (G.isHost) {
       const p = me(); if (!p) return;
       p.weapon = type; p.cd = 0.3;
+      if (artwork) { setWeaponArt(p.id, artwork); if (!Net.state.solo) Net.broadcast({ t: 'weaponart', id: p.id, art: artwork }); }
       ev({ k: 'equip', id: p.id });
-    } else Net.sendHost({ t: 'equip', w: type });
+    } else Net.sendHost({ t: 'equip', w: type, art: artwork || null });
   }
 
   function setupNet() {
     Net.on('ready', function (info) {
       // Switching from solo to multiplayer (or back) starts a clean run.
       G.players.clear(); G.proj = []; G.waves = []; G.events = []; G.pending = [];
+      G.weaponArts.clear(); G.weaponArtImages.clear();
       G.isHost = info.host; G.myId = info.id; G.started = true;
       lastSelfDead = null;
       const tag = $('hostTag');
@@ -1876,7 +1942,7 @@ const Menu = (function () {
     Net.on('peerJoin', function (_, id) {
       if (!G.isHost) return;
       const p = addPlayer(id, 'PILOT-' + id.slice(0, 4).toUpperCase(), false);
-      Net.sendTo(id, { t: 'welcome', id: id, map: mapToString() });
+      Net.sendTo(id, { t: 'welcome', id: id, map: mapToString(), arts: Array.from(G.weaponArts.entries()).map(function (a) { return { id: a[0], art: a[1] }; }) });
       pushKill(p.name + ' joined the grid');
     });
     Net.on('peerLeave', function (_, id) {
@@ -1894,11 +1960,15 @@ const Menu = (function () {
     Net.on('equip', function (d, from) {
       if (!G.isHost || !WEAPONS[d.w]) return;
       const p = G.players.get(from); if (!p) return;
-      p.weapon = d.w; p.cd = 0.3; ev({ k: 'equip', id: p.id });
+      p.weapon = d.w; p.cd = 0.3;
+      if (typeof d.art === 'string') { setWeaponArt(p.id, d.art); if (!Net.state.solo) Net.broadcast({ t: 'weaponart', id: p.id, art: d.art }); }
+      ev({ k: 'equip', id: p.id });
     });
+    Net.on('weaponart', function (d) { if (!G.isHost && d && d.id && d.art) setWeaponArt(d.id, d.art); });
     Net.on('welcome', function (d) {
       if (G.isHost) return;
       G.myId = d.id; mapFromString(d.map);
+      (d.arts || []).forEach(function (a) { if (a && a.id && a.art) setWeaponArt(a.id, a.art); });
       $('connecting').classList.add('hidden');
     });
     Net.on('map', function (d) {
@@ -2073,50 +2143,19 @@ const Menu = (function () {
   })();
 
   function drawTerrain() {
-    const t = G.time, map = G.map;
-    for (let pass = 1; pass <= 5; pass++) {
-      for (let cy = 0; cy < ROWS; cy++) for (let cx = 0; cx < COLS; cx++) {
-        const v = map[cy * COLS + cx]; if (v !== pass) continue;
-        const x = cx * CELL, y = cy * CELL, h = (cx * 13 + cy * 7) % 10 / 10;
-        switch (v) {
-          case T.WALL: {
-            ctx.fillStyle = '#000'; ctx.fillRect(x, y, CELL, CELL);
-            ctx.fillStyle = 'rgba(255,46,151,0.75)';
-            if (cx > 0 && map[cy * COLS + cx - 1] !== T.WALL) ctx.fillRect(x, y, 2, CELL);
-            if (cx < COLS - 1 && map[cy * COLS + cx + 1] !== T.WALL) ctx.fillRect(x + CELL - 2, y, 2, CELL);
-            if (cy > 0 && map[(cy - 1) * COLS + cx] !== T.WALL) ctx.fillRect(x, y, CELL, 2);
-            if (cy < ROWS - 1 && map[(cy + 1) * COLS + cx] !== T.WALL) ctx.fillRect(x, y + CELL - 2, CELL, 2);
-            break;
-          }
-          case T.BOOST: {
-            ctx.fillStyle = 'rgba(0,240,255,0.2)'; ctx.fillRect(x, y, CELL, CELL);
-            const o = (t * 36 + h * 10) % 10;
-            ctx.strokeStyle = 'rgba(120,255,255,0.85)'; ctx.lineWidth = 2; ctx.beginPath();
-            ctx.moveTo(x + 3 + o, y + 4); ctx.lineTo(x + 9 + o, y + 10); ctx.lineTo(x + 3 + o, y + 16); ctx.stroke();
-            break;
-          }
-          case T.ACID: {
-            ctx.fillStyle = 'rgba(255,40,64,' + (0.26 + 0.1 * Math.sin(t * 3 + h * 6)) + ')'; ctx.fillRect(x, y, CELL, CELL);
-            const by = y + CELL - ((t * 14 + h * CELL) % CELL);
-            ctx.fillStyle = 'rgba(255,150,150,0.75)'; ctx.beginPath(); ctx.arc(x + 4 + h * 12, by, 1.8 + h, 0, TAU); ctx.fill();
-            break;
-          }
-          case T.ICE: {
-            ctx.fillStyle = 'rgba(70,130,255,0.3)'; ctx.fillRect(x, y, CELL, CELL);
-            ctx.strokeStyle = 'rgba(255,255,255,' + (0.18 + 0.2 * Math.abs(Math.sin(t * 1.4 + h * 9))) + ')'; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(x + 4, y + CELL - 4); ctx.lineTo(x + CELL - 4, y + 4); ctx.stroke();
-            break;
-          }
-          case T.HEAL: {
-            ctx.fillStyle = 'rgba(57,255,136,0.2)'; ctx.fillRect(x, y, CELL, CELL);
-            ctx.fillStyle = 'rgba(160,255,200,' + (0.4 + 0.4 * Math.sin(t * 3 + h * 6)) + ')';
-            ctx.fillRect(x + 8, y + 4, 4, 12); ctx.fillRect(x + 4, y + 8, 12, 4);
-            break;
-          }
-          default: break;
-        }
-      }
-    }
+    // Side-on neon arena inspired by platform fighters.
+    const g = ctx;
+    const sky = g.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#10102e'); sky.addColorStop(.62, '#22234a'); sky.addColorStop(1, '#080b19');
+    g.fillStyle = sky; g.fillRect(0,0,W,H);
+    g.save();
+    for (let i=0;i<48;i++) { const x=(i*173+G.time*8)%W, y=(i*71)%430; g.globalAlpha=.25+.25*Math.sin(G.time*1.4+i); g.fillStyle='#b8d9ff'; g.fillRect(x,y,2,2); }
+    g.globalAlpha=1;
+    // distant skyline and spotlights
+    for(let i=0;i<16;i++){const x=i*88-20, hh=80+(i*47)%130;g.fillStyle='rgba(10,14,39,.8)';g.fillRect(x,500-hh,62,hh);g.fillStyle='rgba(75,104,255,.25)';for(let yy=510-hh;yy<495;yy+=17)g.fillRect(x+10,yy,4,6);}
+    const platforms=[{x:70,y:580,w:1140,h:42},{x:270,y:440,w:210,h:16},{x:800,y:440,w:210,h:16},{x:525,y:350,w:230,h:16}];
+    platforms.forEach((p,i)=>{g.fillStyle='#0a1025';g.fillRect(p.x,p.y,p.w,p.h);g.fillStyle=i===0?'#38f5ff':'#a66bff';g.shadowColor=g.fillStyle;g.shadowBlur=18;g.fillRect(p.x,p.y,p.w,4);g.shadowBlur=0;g.fillStyle='rgba(255,255,255,.12)';g.fillRect(p.x,p.y+6,p.w,2);});
+    g.restore();
   }
 
   function drawWaves() {
@@ -2185,69 +2224,24 @@ const Menu = (function () {
 
   function drawPlayer(p) {
     if (p.dead) return;
-    const isMe = p.id === G.myId, w = WEAPONS[p.weapon] || WEAPONS.gun;
-    if (p.slowed) { ctx.strokeStyle = 'rgba(255,176,0,0.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, R + 6, 0, TAU); ctx.stroke(); }
-    ctx.save(); ctx.translate(p.x, p.y);
-    ctx.shadowColor = p.color; ctx.shadowBlur = 16; ctx.fillStyle = '#0a0e20'; ctx.strokeStyle = p.color; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
-    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(Math.cos(p.a) * 5.5, Math.sin(p.a) * 5.5, 3.4, 0, TAU); ctx.fill();
-    if (isMe) { ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(0, 0, R + 5, 0, TAU); ctx.stroke(); ctx.setLineDash([]); }
-    /* The weapon is anchored to the pilot's grip, not floated beside the body.
-       Each weapon type gets its own pivot so the handle sits at the hand and
-       the blade/barrel/head extends outward in the direction the pilot aims. */
-    ctx.save();
-    ctx.rotate(p.a);
-    const handX = 6.3;
-    const held = {
-      sword:    { x: 15.6, size: 15.2 },
-      gun:      { x: 12.5, size: 14.8 },
-      shield:   { x: 16.0, size: 14.6 },
-      staff:    { x: 10.2, size: 15.8 },
-      bow:      { x: handX, size: 15.0, spriteScale: 0.62 },
-      axe:      { x: 10.0, size: 16.0 },
-      shuriken: { x: 7.0, size: 12.0 },
-      hammer:   { x: 8.0, size: 16.0 }
-    }[p.weapon] || { x: 12.5, size: 14.8 };
-
-    /* Forearm/sleeve passes behind the item, connected to the torso. */
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#070b18'; ctx.lineWidth = 6.5;
-    ctx.beginPath(); ctx.moveTo(1.8, 3.5); ctx.lineTo(handX, 0); ctx.stroke();
-    ctx.strokeStyle = p.color; ctx.lineWidth = 3.7;
-    ctx.beginPath(); ctx.moveTo(2.2, 3.1); ctx.lineTo(handX - 0.3, 0.1); ctx.stroke();
-
-    if (p.weapon === 'bow' && sprOn()) {
-      /* Frame 0 is relaxed; later frames draw the string as cooldown refills. */
-      const prog = 1 - clamp(p.cd / w.cd, 0, 1);
-      Sprites.draw(ctx, 'bow', Math.min(4, Math.floor(prog * 5)), held.x, 0, 0, held.spriteScale || 0.62);
-    } else {
-      /* A dark silhouette improves contrast against both bright maps and effects. */
-      WeaponIcons.draw(ctx, p.weapon, held.x, 0, held.size + 2.2, '#09101f', 0, 0);
-      WeaponIcons.draw(ctx, p.weapon, held.x, 0, held.size, w.color, 0, 10);
-    }
-
-    /* Visible hand wraps over the handle so every weapon reads as held. */
-    ctx.fillStyle = '#10172a';
-    ctx.beginPath(); ctx.ellipse(handX, 0, 3.3, 3.0, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#efc8a5';
-    ctx.beginPath(); ctx.ellipse(handX + 0.2, -0.1, 2.25, 2.0, 0, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#fff0d7'; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(handX - 0.7, -0.7); ctx.lineTo(handX + 0.8, -0.7); ctx.stroke();
-    ctx.restore();
-    ctx.restore();
-
-    if (p.shieldT > 0) {
-      const prog = Math.min(1, p.shieldAge / 0.25), rr = 22 + prog * 26, al = Math.min(1, p.shieldT / 0.3);
-      ctx.save(); ctx.translate(p.x, p.y);
-      ctx.fillStyle = 'rgba(0,200,255,' + 0.16 * al + ')'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, rr, p.a - 1.25, p.a + 1.25); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(120,240,255,' + al + ')'; ctx.lineWidth = 5; ctx.shadowColor = '#42d9ff'; ctx.shadowBlur = 16;
-      ctx.beginPath(); ctx.arc(0, 0, rr, p.a - 1.25, p.a + 1.25); ctx.stroke();
-      ctx.restore();
-    }
-    const bw = 34, f = clamp(p.hp / p.max, 0, 1);
-    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(p.x - bw / 2 - 1, p.y - 27, bw + 2, 6);
-    ctx.fillStyle = f > 0.5 ? '#39ff88' : f > 0.25 ? '#ffb000' : '#ff3d5e'; ctx.fillRect(p.x - bw / 2, p.y - 26, bw * f, 4);
-    ctx.font = '11px monospace'; ctx.textAlign = 'center'; ctx.fillStyle = isMe ? '#ffffff' : p.color; ctx.fillText(p.name, p.x, p.y - 32);
+    const isMe=p.id===G.myId, w=WEAPONS[p.weapon]||WEAPONS.gun, face=p.face||1;
+    ctx.save(); ctx.translate(p.x,p.y); ctx.scale(face,1);
+    // shadow, boots, body, arms and head: a readable side-on fighter silhouette
+    ctx.fillStyle='rgba(0,0,0,.38)';ctx.beginPath();ctx.ellipse(0,10,22,5,0,0,TAU);ctx.fill();
+    ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.strokeStyle='#0a0b19';ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(-5,-8);ctx.lineTo(-9,4);ctx.moveTo(5,-8);ctx.lineTo(10,4);ctx.stroke();
+    ctx.strokeStyle=p.color;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(-5,-8);ctx.lineTo(-9,3);ctx.moveTo(5,-8);ctx.lineTo(10,3);ctx.stroke();
+    ctx.fillStyle='#0a1025';ctx.strokeStyle=p.color;ctx.lineWidth=3;ctx.shadowColor=p.color;ctx.shadowBlur=14;ctx.beginPath();ctx.roundRect(-11,-32,22,26,6);ctx.fill();ctx.stroke();ctx.shadowBlur=0;
+    ctx.fillStyle='#f1c9a6';ctx.beginPath();ctx.arc(1,-41,9,0,TAU);ctx.fill();ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(0,-44,10,Math.PI,TAU);ctx.fill();
+    // arm reaches forward and the actual drawn weapon art is placed in the grip
+    ctx.strokeStyle='#10172a';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(4,-26);ctx.lineTo(17,-21);ctx.stroke();ctx.strokeStyle=p.color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(4,-26);ctx.lineTo(17,-21);ctx.stroke();
+    const art=G.weaponArtImages.get(p.id);
+    if(art&&art.complete&&art.naturalWidth>0){let ww=34,hh=Math.max(8,Math.min(24,ww*art.naturalHeight/art.naturalWidth));ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(art,14,-29-hh/2,ww,hh);ctx.restore();}
+    else WeaponIcons.draw(ctx,p.weapon,22,-24,17,w.color,0,8);
+    ctx.fillStyle='#f1c9a6';ctx.beginPath();ctx.arc(17,-21,3.5,0,TAU);ctx.fill();ctx.restore();
+    if(p.shieldT>0){ctx.strokeStyle='rgba(80,230,255,.8)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(p.x+face*16,p.y-22,24,-1.3,1.3);ctx.stroke();}
+    const bw=42,f=clamp(p.hp/p.max,0,1);ctx.fillStyle='rgba(0,0,0,.7)';ctx.fillRect(p.x-bw/2,p.y-64,bw,6);ctx.fillStyle=f>.5?'#39ff88':f>.25?'#ffb000':'#ff3d5e';ctx.fillRect(p.x-bw/2,p.y-64,bw*f,4);
+    ctx.font='11px monospace';ctx.textAlign='center';ctx.fillStyle=isMe?'#fff':p.color;ctx.fillText(p.name,p.x,p.y-69);
   }
 
   function drawFx() {
@@ -2300,6 +2294,7 @@ const Menu = (function () {
     ctx.drawImage(bgLayer, 0, 0);
     if (G.shake > 0) ctx.translate(rnd(-G.shake, G.shake), rnd(-G.shake, G.shake));
     drawTerrain();
+    ctx.save();ctx.font='bold 12px monospace';ctx.fillStyle='rgba(220,235,255,.7)';ctx.textAlign='left';ctx.fillText('ARENA BRAWL  •  SIDE-VIEW PLATFORM FIGHTER',18,24);ctx.restore();
     if (G.paint) { ctx.drawImage(gridLayer, 0, 0); }
     drawWaves();
     G.players.forEach(drawPlayer);
@@ -2357,6 +2352,57 @@ const Menu = (function () {
   /* ------------------------------------------------------------------ */
   /* input + UI wiring                                                   */
   /* ------------------------------------------------------------------ */
+  let capturingBind = null;
+  function keyLabel(code) {
+    if (!code) return 'UNBOUND';
+    if (code === 'Space') return 'SPACE';
+    if (code === 'Escape') return 'ESC';
+    if (code.indexOf('Arrow') === 0) return code.slice(5).toUpperCase() + ' ARROW';
+    if (code.indexOf('Key') === 0) return code.slice(3).toUpperCase();
+    if (code.indexOf('Digit') === 0) return code.slice(5);
+    if (code.indexOf('Numpad') === 0) return 'NUM ' + code.slice(6);
+    return code.toUpperCase();
+  }
+  function renderKeybinds() {
+    const box = $('keybindRows'); if (!box) return;
+    box.innerHTML = '';
+    KEY_ACTIONS.forEach(function (action) {
+      const row = document.createElement('div'); row.className = 'keybind-row';
+      const label = document.createElement('span'); label.textContent = action.label;
+      const button = document.createElement('button');
+      const listening = capturingBind === action.id;
+      button.type = 'button'; button.className = listening ? 'listening' : '';
+      button.textContent = listening ? 'PRESS A KEY…' : keyLabel(bindCode(action.id));
+      button.setAttribute('aria-label', 'Change keybind for ' + action.label);
+      button.addEventListener('click', function () { capturingBind = action.id; renderKeybinds(); });
+      row.appendChild(label); row.appendChild(button); box.appendChild(row);
+    });
+  }
+  function updateKeybindLabels() {
+    const put = function (id, text) { const el = $(id); if (el) el.textContent = text; };
+    put('drawKeyHint', keyLabel(bindCode('drawWeapon')));
+    put('editorKeyHint', keyLabel(bindCode('toggleEditor')));
+    put('menuPauseHint', keyLabel(bindCode('pause')));
+    put('hintMove', [bindCode('moveUp'), bindCode('moveLeft'), bindCode('moveDown'), bindCode('moveRight')].map(keyLabel).join('/'));
+    put('hintFire', 'Click / ' + keyLabel(bindCode('fire')));
+    put('hintDraw', keyLabel(bindCode('drawWeapon')));
+    put('hintPaint', keyLabel(bindCode('toggleEditor')));
+    put('hintPause', keyLabel(bindCode('pause')));
+    const brushBinds = { '1':'paintWall', '2':'paintBoost', '3':'paintAcid', '4':'paintIce', '5':'paintHeal', '0':'erase' };
+    document.querySelectorAll('.brush').forEach(function (b) {
+      const action = brushBinds[b.dataset.brush]; const cap = b.querySelector('kbd');
+      if (action && cap) cap.textContent = keyLabel(bindCode(action));
+    });
+    put('hintBrushes', ['paintWall','paintBoost','paintAcid','paintIce','paintHeal','erase'].map(function (a) { return keyLabel(bindCode(a)); }).join('/'));
+  }
+  function initKeybinds() {
+    renderKeybinds(); updateKeybindLabels();
+    const reset = $('resetBinds');
+    if (reset) reset.addEventListener('click', function () {
+      Settings.keybinds = { moveUp:'KeyW', moveDown:'KeyS', moveLeft:'KeyA', moveRight:'KeyD', fire:'Space', drawWeapon:'KeyE', pause:'Escape', toggleEditor:'KeyP', paintWall:'Digit1', paintBoost:'Digit2', paintAcid:'Digit3', paintIce:'Digit4', paintHeal:'Digit5', erase:'Digit6' };
+      Settings.save(); capturingBind = null; renderKeybinds(); updateKeybindLabels();
+    });
+  }
   function setPaintEnabled(on) {
     $('paintToggle').disabled = !on; $('mapDefault').disabled = !on; $('mapClear').disabled = !on; $('botsToggle').disabled = !on;
     document.querySelectorAll('.brush').forEach(function (b) { b.disabled = !on; });
@@ -2411,14 +2457,27 @@ const Menu = (function () {
     window.addEventListener('blur', releaseInputs);
 
     window.addEventListener('keydown', function (e) {
+      if (capturingBind) {
+        e.preventDefault(); e.stopPropagation();
+        if (e.code === 'Backspace') { capturingBind = null; renderKeybinds(); return; }
+        const target = capturingBind, previous = bindCode(target);
+        const conflict = KEY_ACTIONS.find(function (a) { return a.id !== target && bindCode(a.id) === e.code; });
+        if (conflict) Settings.keybinds[conflict.id] = previous;
+        Settings.keybinds[target] = e.code;
+        Settings.save(); capturingBind = null; renderKeybinds(); updateKeybindLabels(); return;
+      }
       if (e.target && (e.target.tagName === 'INPUT') && e.target.type !== 'range') return;
-      if (e.code === 'Escape') { if (Menu.isOpen()) Menu.escape(); else if (DrawPad.isOpen()) DrawPad.close(); else if (G.paint) setPaint(false); else Menu.open(); return; }
+      if (e.code === bindCode('pause')) { if (Menu.isOpen()) Menu.escape(); else if (DrawPad.isOpen()) DrawPad.close(); else if (G.paint) setPaint(false); else Menu.open(); return; }
       if (G.modalOpen) return;
       G.keys[e.code] = true;
-      if (e.code === 'Space' || e.code.indexOf('Arrow') === 0) e.preventDefault();
-      if (e.code === 'KeyE') DrawPad.open();
-      else if (e.code === 'KeyP' && G.isHost) setPaint(!G.paint);
-      else if (G.isHost && /^Digit[1-6]$/.test(e.code)) { const n = +e.code.slice(5); setBrush(n === 6 ? 0 : n); if (!G.paint) setPaint(true); }
+      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') e.preventDefault();
+      if (e.code === bindCode('drawWeapon')) DrawPad.open();
+      else if (e.code === bindCode('toggleEditor') && G.isHost) setPaint(!G.paint);
+      else if (G.isHost) {
+        const terrainActions = [['paintWall', T.WALL], ['paintBoost', T.BOOST], ['paintAcid', T.ACID], ['paintIce', T.ICE], ['paintHeal', T.HEAL], ['erase', T.EMPTY]];
+        const match = terrainActions.find(function (a) { return e.code === bindCode(a[0]); });
+        if (match) { setBrush(match[1]); if (!G.paint) setPaint(true); }
+      }
     });
     window.addEventListener('keyup', function (e) { G.keys[e.code] = false; if (e.code === 'Space') e.preventDefault(); });
     document.addEventListener('click', function (e) { if (e.target && e.target.tagName === 'BUTTON') e.target.blur(); });
@@ -2436,6 +2495,7 @@ const Menu = (function () {
     $('botsToggle').addEventListener('click', function () { if (G.isHost) setBots(!G.botsOn); });
     setBrush(T.WALL); setBrushSize(2);
 
+    initKeybinds();
     DrawPad.init({
       onEquip: equipWeapon,
       onOpen: function () { G.pad = true; syncModal(); },
@@ -2455,7 +2515,8 @@ const Menu = (function () {
           pendingInitialDraw = false;
           setTimeout(function () { DrawPad.open(true); }, 90);
         } else Net.init();
-      }
+      },
+      onChange: function (key) { if (key === 'aiCount' && G.isHost && G.started) setBots(G.botsOn); }
     });
   }
 
@@ -2471,7 +2532,7 @@ const Menu = (function () {
       const p = me();
       if (p) { const inp = getInput(); p.inp.mx = inp.mx; p.inp.my = inp.my; p.inp.u = inp.u; p.inp.d = inp.d; p.inp.l = inp.l; p.inp.r = inp.r; p.inp.f = inp.f; }
       acc += dt;
-      while (acc >= STEP) { hostStep(STEP * 0.86); acc -= STEP; }
+      while (acc >= STEP) { hostStep(STEP * 0.80); acc -= STEP; }
     } else if (!G.isHost) clientStep(dt);
     updateFx(dt);
     render();
