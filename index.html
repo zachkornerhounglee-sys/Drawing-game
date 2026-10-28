@@ -157,7 +157,19 @@ kbd {
 .menu-title i { color: var(--pink); font-style: normal; text-shadow: 0 0 18px var(--pink); }
 .menu-sub { color: var(--dim); letter-spacing: 0.08em; margin-bottom: 22px; text-align: center; }
 .menu-main { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.boil-btn { background: none; border: 0; padding: 10px 26px; cursor: pointer; border-radius: 6px; line-height: 0; }
+.menu-modes { width: min(460px, 92vw); padding-bottom: 12px; border-color: rgba(0,240,255,.35); box-shadow: 0 0 45px rgba(0,240,255,.10), 0 0 55px rgba(255,46,151,.07); }
+    .mode-intro { padding: 14px 16px 4px; text-align: center; color: var(--dim); font-size: 11px; line-height: 1.6; }
+    .mode-options { display: flex; flex-direction: column; gap: 9px; padding: 12px 14px 0; }
+    .mode-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; padding: 14px 16px; text-align: left; color: var(--text); cursor: pointer; background: linear-gradient(100deg, rgba(0,240,255,.09), rgba(255,46,151,.04)); border: 1px solid #283664; border-radius: 5px; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+    .mode-card:hover { transform: translateY(-2px); border-color: var(--cyan); box-shadow: 0 0 18px rgba(0,240,255,.14); }
+    .mode-card.multi { background: linear-gradient(100deg, rgba(255,46,151,.12), rgba(0,240,255,.05)); border-color: rgba(255,46,151,.42); }
+    .mode-card.multi:hover { border-color: var(--pink); box-shadow: 0 0 18px rgba(255,46,151,.18); }
+    .mode-name { display: block; font-weight: 800; font-size: 13px; letter-spacing: 2px; color: #fff; }
+    .mode-detail { display: block; margin-top: 5px; font-size: 10px; letter-spacing: .02em; line-height: 1.5; color: var(--dim); }
+    .mode-arrow { color: var(--cyan); font-size: 22px; flex: none; }
+    .mode-card.multi .mode-arrow { color: var(--pink); }
+    .mode-back { margin: 12px 14px 0; width: calc(100% - 28px); }
+    .boil-btn { background: none; border: 0; padding: 10px 26px; cursor: pointer; border-radius: 6px; line-height: 0; }
 .boil-btn canvas { display: block; image-rendering: pixelated; max-width: 80vw; height: auto; }
 .boil-btn:focus-visible { outline: 2px dashed var(--cyan); outline-offset: 4px; }
 .menu-settings { width: min(420px, 92vw); }
@@ -344,6 +356,22 @@ kbd {
           <button id="menuSettingsBtn" class="boil-btn" type="button" aria-label="Settings"><canvas></canvas><span class="boil-fallback">SETTINGS</span></button>
         </div>
 
+        <div id="menuModes" class="panel menu-modes hidden">
+          <div class="panel-title">CHOOSE YOUR RUN <span class="tag">DEPLOY</span></div>
+          <div class="mode-intro">Every life starts at the forge. Draw a weapon to deploy, then survive the arena.</div>
+          <div class="mode-options">
+            <button id="menuSoloBtn" class="mode-card" type="button">
+              <span><span class="mode-name">SINGLE PLAYER</span><span class="mode-detail">Play offline with AI pilots. No room link required.</span></span>
+              <span class="mode-arrow" aria-hidden="true">›</span>
+            </button>
+            <button id="menuMultiBtn" class="mode-card multi" type="button">
+              <span><span class="mode-name">MULTIPLAYER</span><span class="mode-detail">Host a room and share the invite link, or open a friend's link.</span></span>
+              <span class="mode-arrow" aria-hidden="true">›</span>
+            </button>
+          </div>
+          <button id="menuModeBack" class="btn ghost mode-back" type="button">BACK</button>
+        </div>
+
         <div id="menuSettings" class="panel menu-settings hidden">
           <div class="panel-title">SETTINGS</div>
           <div class="set-body">
@@ -403,7 +431,7 @@ const Net = (function () {
 
   const S = { peer: null, isHost: true, myId: 'local', conns: new Map(), hostConn: null, ready: false, solo: false, roomLink: '' };
   const HANDLERS = {};
-  let bTimer = null, iTimer = null, joinTimer = null;
+  let bTimer = null, iTimer = null, joinTimer = null, initToken = 0;
 
   function on(type, fn) { HANDLERS[type] = fn; }
   function fire(type, data, from) {
@@ -445,13 +473,22 @@ const Net = (function () {
     } else { input.select(); document.execCommand('copy'); done(); }
   }
 
-  function goSolo(reason) {
-    if (S.ready) return;
+  function goSolo(reason, force) {
+    if (S.ready && !force) return;
     S.isHost = true; S.solo = true; S.myId = 'local'; S.ready = true;
     hideLink();
     setStatus('SOLO (OFFLINE)' + (reason ? ' - ' + reason : ''), 'warn');
     updateCount();
     fire('ready', { host: true, id: 'local', solo: true });
+  }
+
+  function startSolo() {
+    initToken++;
+    if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
+    stopBroadcast(); stopInput();
+    if (S.peer) { try { S.peer.destroy(); } catch (_) { /* ignore */ } }
+    S.peer = null; S.hostConn = null; S.conns.clear(); S.ready = false; S.solo = false;
+    goSolo('single-player', true);
   }
 
   function wireHostConn(conn) {
@@ -524,14 +561,22 @@ const Net = (function () {
     }, 12000);
   }
 
+  let copyBound = false;
   function init() {
-    const btn = $('copyLink'); if (btn) btn.addEventListener('click', copyLink);
+    const btn = $('copyLink');
+    if (btn && !copyBound) { btn.addEventListener('click', copyLink); copyBound = true; }
+    if (S.ready && S.peer && !S.solo) return;
+    const token = ++initToken;
+    if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
+    if (S.peer) { try { S.peer.destroy(); } catch (_) { /* ignore */ } }
+    S.peer = null; S.ready = false; S.solo = false; S.hostConn = null; S.conns.clear();
     const room = new URLSearchParams(window.location.search).get('room');
     if (typeof Peer !== 'undefined') { if (room) joinRoom(room); else startAsHost(); return; }
-    // PeerJS is loaded asynchronously so a slow/blocked CDN never prevents the local game from starting.
+    // Multiplayer starts only when selected. Wait briefly for the optional PeerJS script.
     setStatus('LOADING NETWORK...', 'warn');
     let checks = 0;
     function waitForPeer() {
+      if (token !== initToken) return;
       if (typeof Peer !== 'undefined') { if (room) joinRoom(room); else startAsHost(); return; }
       if (++checks >= 20) { goSolo('PeerJS unavailable'); return; }
       setTimeout(waitForPeer, 250);
@@ -560,7 +605,7 @@ const Net = (function () {
   function stopInput() { if (iTimer) { clearInterval(iTimer); iTimer = null; } }
 
   return {
-    state: S, on: on, init: init, broadcast: broadcast, sendTo: sendTo, sendHost: sendHost,
+    state: S, on: on, init: init, startSolo: startSolo, broadcast: broadcast, sendTo: sendTo, sendHost: sendHost,
     peerCount: peerCount, startHostBroadcast: startHostBroadcast, startClientInput: startClientInput,
     stopBroadcast: stopBroadcast, stopInput: stopInput
   };
@@ -985,8 +1030,17 @@ const DrawPad = (function () {
   const INK = '#eaffff';
   let pad, pctx, modal, overlay, brushInput, brushLabel, toastLayer;
   let drawing = false, strokes = [], cur = null, brush = 10, busy = false, cfg = {}, open_ = false;
+  let requiredDraw = false;
 
   function $(id) { return document.getElementById(id); }
+  function updateDrawButtons() {
+    const closeBtn = $('padClose');
+    if (closeBtn) {
+      closeBtn.disabled = requiredDraw;
+      closeBtn.textContent = requiredDraw ? 'DRAW TO DEPLOY' : 'CANCEL';
+      closeBtn.title = requiredDraw ? 'Draw and equip a weapon to start this life.' : 'Close weapon forge';
+    }
+  }
 
   function buildLegend() {
     const lg = $('legend');
@@ -1074,20 +1128,22 @@ const DrawPad = (function () {
       const res = Classifier.analyzeCanvas(pad);
       overlay.classList.add('hidden'); busy = false;
       if (res.type) {
-        close(); showToast(res);
+        close(true); showToast(res);
         if (cfg.onEquip) cfg.onEquip(res.type, res);
       } else showToast(res);
     }, 1600);
   }
 
-  function open() {
-    if (open_) return;
-    open_ = true; modal.classList.remove('hidden');
+  function open(required) {
+    if (required) requiredDraw = true;
+    if (open_) { updateDrawButtons(); return; }
+    requiredDraw = !!required;
+    open_ = true; modal.classList.remove('hidden'); updateDrawButtons();
     if (cfg.onOpen) cfg.onOpen();
   }
-  function close() {
-    if (!open_) return;
-    open_ = false; modal.classList.add('hidden'); drawing = false;
+  function close(force) {
+    if (!open_ || (requiredDraw && !force)) return;
+    open_ = false; requiredDraw = false; modal.classList.add('hidden'); drawing = false; updateDrawButtons();
     if (cfg.onClose) cfg.onClose();
   }
 
@@ -1192,7 +1248,7 @@ const Menu = (function () {
     idle: { fill: '#dff6ff', glow: 'rgba(0,240,255,0.85)' },
     hot: { fill: '#ffffff', glow: 'rgba(255,46,151,0.95)' }
   };
-  let el, settingsPanel, mainPanel, cfg = {}, open_ = false, timer = null, tick = 0;
+  let el, settingsPanel, mainPanel, modesPanel, cfg = {}, open_ = false, timer = null, tick = 0;
   const buttons = [];
 
   function $(id) { return document.getElementById(id); }
@@ -1234,8 +1290,16 @@ const Menu = (function () {
 
   function showSettings(on) {
     settingsPanel.classList.toggle('hidden', !on);
+    modesPanel.classList.add('hidden');
     mainPanel.classList.toggle('hidden', on);
     if (on) { const f = settingsPanel.querySelector('input'); if (f) f.focus(); }
+    else { const p = $('menuPlay'); if (p) p.focus(); }
+  }
+  function showModes(on) {
+    settingsPanel.classList.add('hidden');
+    modesPanel.classList.toggle('hidden', !on);
+    mainPanel.classList.toggle('hidden', on);
+    if (on) { const b = $('menuSoloBtn'); if (b) b.focus(); }
     else { const p = $('menuPlay'); if (p) p.focus(); }
   }
 
@@ -1272,21 +1336,26 @@ const Menu = (function () {
 
   function init(opts) {
     cfg = opts || {};
-    el = $('menu'); settingsPanel = $('menuSettings'); mainPanel = $('menuMain');
+    el = $('menu'); settingsPanel = $('menuSettings'); mainPanel = $('menuMain'); modesPanel = $('menuModes');
     const play = $('menuPlay'), sett = $('menuSettingsBtn');
     makeBoil(play, 'play', 3, 0);
     makeBoil(sett, 'settings', 2, 4);
-    play.addEventListener('click', function () { if (cfg.onPlay) cfg.onPlay(); close(); });
+    play.addEventListener('click', function () { if (cfg.onPlay) cfg.onPlay(); showModes(true); });
     sett.addEventListener('click', function () { showSettings(true); });
     $('menuBack').addEventListener('click', function () { showSettings(false); });
+    $('menuModeBack').addEventListener('click', function () { showModes(false); });
+    $('menuSoloBtn').addEventListener('click', function () { if (cfg.onSolo) cfg.onSolo(); close(); });
+    $('menuMultiBtn').addEventListener('click', function () { if (cfg.onMultiplayer) cfg.onMultiplayer(); close(); });
     bindSettings();
     Sprites.whenReady(redraw);
   }
 
-  /* Esc behaviour: back out of settings first, then resume. */
+  /* Esc backs out of a submenu before leaving the menu. */
   function escape() {
     if (!open_) return false;
-    if (!settingsPanel.classList.contains('hidden')) showSettings(false); else close();
+    if (!settingsPanel.classList.contains('hidden')) showSettings(false);
+    else if (!modesPanel.classList.contains('hidden')) showModes(false);
+    else close();
     return true;
   }
 
@@ -1317,8 +1386,10 @@ const Menu = (function () {
     map: new Uint8Array(COLS * ROWS), changes: [], events: [], pending: [],
     shake: 0, time: 0, nextId: 1, tick: 0, paint: false, brush: T.WALL, brushSize: 2,
     mouse: { x: W / 2, y: H / 2, down: false, right: false, lx: null, ly: null },
-    keys: {}, botsOn: true, modalOpen: false, menu: false, pad: false, attract: false, killfeed: [], lastSnap: 0
+    keys: {}, botsOn: true, modalOpen: false, menu: false, pad: false, attract: false, killfeed: [], lastSnap: 0,
+    roundsDrawEnabled: false
   };
+  let pendingInitialDraw = false, lastSelfDead = null;
   window.Game = G;
 
   const canvas = document.getElementById('game');
@@ -1473,7 +1544,9 @@ const Menu = (function () {
   }
   function respawn(p) {
     const s = spawnPoint();
-    p.x = s.x; p.y = s.y; p.vx = p.vy = 0; p.hp = p.max; p.dead = false; p.cd = 0.5; p.shieldT = 0;
+    p.x = s.x; p.y = s.y; p.vx = p.vy = 0; p.hp = p.max; p.dead = false; p.cd = 0.5;
+    // A short shield window gives the human pilot time to draw the next weapon.
+    p.shieldT = p.bot ? 0 : 4; p.shieldAge = 0;
     if (p.bot) p.weapon = randomWeapon();
   }
 
@@ -1778,19 +1851,26 @@ const Menu = (function () {
 
   function setupNet() {
     Net.on('ready', function (info) {
+      // Switching from solo to multiplayer (or back) starts a clean run.
+      G.players.clear(); G.proj = []; G.waves = []; G.events = []; G.pending = [];
       G.isHost = info.host; G.myId = info.id; G.started = true;
+      lastSelfDead = null;
       const tag = $('hostTag');
       if (info.host) {
         buildDefaultMap();
         addPlayer(G.myId, 'YOU', false);
         setBots(true);
-        Net.startHostBroadcast(buildSnapshot, 60);
+        if (!info.solo) Net.startHostBroadcast(buildSnapshot, 60);
         if (tag) { tag.textContent = 'HOST'; tag.classList.remove('guest'); }
       } else {
         $('connecting').classList.remove('hidden');
         Net.startClientInput(getInput, 60);
         if (tag) { tag.textContent = 'GUEST'; tag.classList.add('guest'); }
         setPaintEnabled(false);
+      }
+      if (pendingInitialDraw) {
+        pendingInitialDraw = false;
+        setTimeout(function () { DrawPad.open(true); }, 90);
       }
     });
     Net.on('peerJoin', function (_, id) {
@@ -2112,11 +2192,48 @@ const Menu = (function () {
     ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
     ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(Math.cos(p.a) * 5.5, Math.sin(p.a) * 5.5, 3.4, 0, TAU); ctx.fill();
     if (isMe) { ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(0, 0, R + 5, 0, TAU); ctx.stroke(); ctx.setLineDash([]); }
+    /* The weapon is anchored to the pilot's grip, not floated beside the body.
+       Each weapon type gets its own pivot so the handle sits at the hand and
+       the blade/barrel/head extends outward in the direction the pilot aims. */
+    ctx.save();
+    ctx.rotate(p.a);
+    const handX = 6.3;
+    const held = {
+      sword:    { x: 15.6, size: 15.2 },
+      gun:      { x: 12.5, size: 14.8 },
+      shield:   { x: 16.0, size: 14.6 },
+      staff:    { x: 10.2, size: 15.8 },
+      bow:      { x: handX, size: 15.0, spriteScale: 0.62 },
+      axe:      { x: 10.0, size: 16.0 },
+      shuriken: { x: 7.0, size: 12.0 },
+      hammer:   { x: 8.0, size: 16.0 }
+    }[p.weapon] || { x: 12.5, size: 14.8 };
+
+    /* Forearm/sleeve passes behind the item, connected to the torso. */
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#070b18'; ctx.lineWidth = 6.5;
+    ctx.beginPath(); ctx.moveTo(1.8, 3.5); ctx.lineTo(handX, 0); ctx.stroke();
+    ctx.strokeStyle = p.color; ctx.lineWidth = 3.7;
+    ctx.beginPath(); ctx.moveTo(2.2, 3.1); ctx.lineTo(handX - 0.3, 0.1); ctx.stroke();
+
     if (p.weapon === 'bow' && sprOn()) {
-      /* string draws back as the cooldown refills: frame 0 = relaxed, frame 4 = full draw with arrow nocked */
+      /* Frame 0 is relaxed; later frames draw the string as cooldown refills. */
       const prog = 1 - clamp(p.cd / w.cd, 0, 1);
-      Sprites.draw(ctx, 'bow', Math.min(4, Math.floor(prog * 5)), Math.cos(p.a) * (R + 14), Math.sin(p.a) * (R + 14), p.a, 0.62);
-    } else WeaponIcons.draw(ctx, p.weapon, Math.cos(p.a) * (R + 14), Math.sin(p.a) * (R + 14), 13, w.color, p.a, 8);
+      Sprites.draw(ctx, 'bow', Math.min(4, Math.floor(prog * 5)), held.x, 0, 0, held.spriteScale || 0.62);
+    } else {
+      /* A dark silhouette improves contrast against both bright maps and effects. */
+      WeaponIcons.draw(ctx, p.weapon, held.x, 0, held.size + 2.2, '#09101f', 0, 0);
+      WeaponIcons.draw(ctx, p.weapon, held.x, 0, held.size, w.color, 0, 10);
+    }
+
+    /* Visible hand wraps over the handle so every weapon reads as held. */
+    ctx.fillStyle = '#10172a';
+    ctx.beginPath(); ctx.ellipse(handX, 0, 3.3, 3.0, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#efc8a5';
+    ctx.beginPath(); ctx.ellipse(handX + 0.2, -0.1, 2.25, 2.0, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#fff0d7'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(handX - 0.7, -0.7); ctx.lineTo(handX + 0.8, -0.7); ctx.stroke();
+    ctx.restore();
     ctx.restore();
 
     if (p.shieldT > 0) {
@@ -2203,6 +2320,8 @@ const Menu = (function () {
   function updateHud(dt) {
     const p = me();
     if (p) {
+      if (G.roundsDrawEnabled && lastSelfDead === true && !p.dead) DrawPad.open(true);
+      lastSelfDead = !!p.dead;
       const w = WEAPONS[p.weapon];
       $('hpFill').style.width = clamp(p.hp / p.max, 0, 1) * 100 + '%';
       $('hpText').textContent = Math.max(0, Math.round(p.hp));
@@ -2325,7 +2444,18 @@ const Menu = (function () {
     Menu.init({
       onOpen: function () { G.menu = true; syncModal(); },
       onClose: function () { G.menu = false; syncModal(); },
-      onPlay: function () { const a = audio(); if (a && a.state === 'suspended') a.resume(); }
+      onPlay: function () { const a = audio(); if (a && a.state === 'suspended') a.resume(); },
+      onSolo: function () {
+        pendingInitialDraw = true; G.roundsDrawEnabled = true;
+        Net.startSolo();
+      },
+      onMultiplayer: function () {
+        pendingInitialDraw = true; G.roundsDrawEnabled = true;
+        if (Net.state.ready && !Net.state.solo) {
+          pendingInitialDraw = false;
+          setTimeout(function () { DrawPad.open(true); }, 90);
+        } else Net.init();
+      }
     });
   }
 
@@ -2341,7 +2471,7 @@ const Menu = (function () {
       const p = me();
       if (p) { const inp = getInput(); p.inp.mx = inp.mx; p.inp.my = inp.my; p.inp.u = inp.u; p.inp.d = inp.d; p.inp.l = inp.l; p.inp.r = inp.r; p.inp.f = inp.f; }
       acc += dt;
-      while (acc >= STEP) { hostStep(STEP); acc -= STEP; }
+      while (acc >= STEP) { hostStep(STEP * 0.86); acc -= STEP; }
     } else if (!G.isHost) clientStep(dt);
     updateFx(dt);
     render();
@@ -2353,7 +2483,14 @@ const Menu = (function () {
     buildDefaultMap();
     wireUi();
     setupNet();
-    Net.init();
+    // Invite links join automatically; normal visits wait until Multiplayer is selected.
+    const roomInvite = new URLSearchParams(window.location.search).get('room');
+    if (roomInvite) Net.init();
+    else {
+      const status = $('netStatus');
+      if (status) { status.textContent = 'CHOOSE MODE'; status.className = 'chip'; }
+      const count = $('peerCount'); if (count) count.textContent = '1 PILOT';
+    }
     Menu.open();
     requestAnimationFrame(frame);
   }
