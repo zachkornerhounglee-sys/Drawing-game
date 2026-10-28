@@ -1,0 +1,15 @@
+{
+  "name": "Canvas Combat & Cartography",
+  "version": "1.1.0",
+  "entry": "index.html",
+  "multiplayer": "PeerJS WebRTC, host authority, 60 Hz snapshots, join via ?room=HOST_PEER_ID",
+  "files": [
+    "index.html",
+    "css/style.css",
+    "js/network.js",
+    "js/classifier.js",
+    "js/sprites.js",
+    "js/menu.js",
+    "js/engine.js"
+  ]
+}
