@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canvas Combat &amp; Cartography</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <header id="topbar">
+      <div class="brand">CANVAS COMBAT <i>&amp;</i> CARTOGRAPHY</div>
+      <div class="spacer"></div>
+      <div id="roomBox" class="hidden">
+        <span class="lbl">INVITE</span>
+        <input id="roomLink" type="text" readonly spellcheck="false">
+        <button id="copyLink" class="btn small" type="button">COPY LINK</button>
+      </div>
+      <div id="peerCount" class="chip">1 PILOT</div>
+      <div id="netStatus" class="chip warn">STARTING...</div>
+    </header>
+
+    <main id="stage">
+      <canvas id="game" width="1280" height="720"></canvas>
+
+      <section id="hud" class="panel">
+        <div class="hud-top">
+          <canvas id="hudIcon" width="56" height="56"></canvas>
+          <div class="hud-w">
+            <div id="wName" class="w-name">BLASTER</div>
+            <div id="wMeta" class="w-meta">Press E to draw a new weapon</div>
+          </div>
+        </div>
+        <div class="bar-row"><span>HULL</span><div class="bar hp"><i id="hpFill"></i><b id="hpText">100</b></div></div>
+        <div class="bar-row"><span>CHARGE</span><div class="bar cd"><i id="cdFill"></i></div></div>
+        <button id="forgeBtn" class="btn primary wide" type="button">DRAW WEAPON <kbd>E</kbd></button>
+      </section>
+
+      <aside id="toolbar" class="panel">
+        <div class="panel-title">CARTOGRAPHY <span id="hostTag" class="tag">HOST</span></div>
+        <button id="paintToggle" class="btn wide" type="button">PAINT MODE <kbd>P</kbd></button>
+        <div id="brushes">
+          <button class="brush active" data-brush="1" type="button"><i class="sw sw-wall"></i><span>Wall</span><kbd>1</kbd></button>
+          <button class="brush" data-brush="2" type="button"><i class="sw sw-boost"></i><span>Boost lane</span><kbd>2</kbd></button>
+          <button class="brush" data-brush="3" type="button"><i class="sw sw-acid"></i><span>Acid</span><kbd>3</kbd></button>
+          <button class="brush" data-brush="4" type="button"><i class="sw sw-ice"></i><span>Ice</span><kbd>4</kbd></button>
+          <button class="brush" data-brush="5" type="button"><i class="sw sw-heal"></i><span>Healing spring</span><kbd>5</kbd></button>
+          <button class="brush" data-brush="0" type="button"><i class="sw sw-erase"></i><span>Eraser</span><kbd>6</kbd></button>
+        </div>
+        <label class="slider"><span>BRUSH SIZE</span><input id="brushSize" type="range" min="1" max="6" value="2"><b id="brushSizeLabel">2</b></label>
+        <div class="row">
+          <button id="mapDefault" class="btn small" type="button">RESET MAP</button>
+          <button id="mapClear" class="btn small" type="button">CLEAR MAP</button>
+        </div>
+        <button id="botsToggle" class="btn wide" type="button">BOTS: ON</button>
+        <div id="paintNote" class="note">Right-click erases while painting.</div>
+      </aside>
+
+      <section id="scoreboard" class="panel">
+        <div class="panel-title">PILOTS</div>
+        <div id="scoreList"></div>
+      </section>
+      <div id="killfeed"></div>
+
+      <div id="deathOverlay" class="hidden">
+        <div class="d-title">HULL BREACH</div>
+        <div id="deathTimer" class="d-sub">Respawning in 3</div>
+      </div>
+      <div id="connecting" class="hidden">CONNECTING TO MATCH...</div>
+
+      <div id="hint">
+        <kbd>WASD</kbd> move <kbd>Mouse</kbd> aim <kbd>Click / Space</kbd> attack
+        <kbd>E</kbd> draw weapon <kbd>P</kbd> paint map <kbd>1-6</kbd> brushes <kbd>Wheel</kbd> brush size <kbd>Esc</kbd> menu
+      </div>
+
+      <div id="toastLayer"></div>
+    </main>
+
+
+    <div id="menu" class="hidden">
+      <div class="menu-inner">
+        <div class="menu-title">CANVAS COMBAT <i>&amp;</i> CARTOGRAPHY</div>
+        <div class="menu-sub">Draw your weapon. Paint your arena. Share the link.</div>
+
+        <div id="menuMain" class="menu-main">
+          <button id="menuPlay" class="boil-btn" type="button" aria-label="Play"><canvas></canvas></button>
+          <button id="menuSettingsBtn" class="boil-btn" type="button" aria-label="Settings"><canvas></canvas></button>
+        </div>
+
+        <div id="menuSettings" class="panel menu-settings hidden">
+          <div class="panel-title">SETTINGS</div>
+          <div class="set-body">
+            <label class="slider"><span>SOUND VOLUME</span><input id="setVol" type="range" min="0" max="100" step="5"><b id="setVolLabel">70</b></label>
+            <label class="slider"><span>SCREEN SHAKE</span><input id="setShake" type="range" min="0" max="100" step="5"><b id="setShakeLabel">100</b></label>
+            <label class="slider"><span>PARTICLE DENSITY</span><input id="setFx" type="range" min="0" max="100" step="5"><b id="setFxLabel">100</b></label>
+            <label class="check"><input id="setSprites" type="checkbox"><span>Pixel-art weapon and effect sprites</span></label>
+            <label class="check"><input id="setBoil" type="checkbox"><span>Line boil animation on menu titles</span></label>
+            <button id="menuBack" class="btn wide" type="button">BACK</button>
+          </div>
+        </div>
+        <div class="menu-foot"><kbd>Esc</kbd> opens this menu any time</div>
+      </div>
+    </div>
+
+    <div id="drawModal" class="modal hidden">
+      <div class="panel draw-panel">
+        <div class="panel-title">WEAPON FORGE: DRAW YOUR ARMAMENT</div>
+        <div class="draw-body">
+          <div class="pad-wrap">
+            <canvas id="padCanvas" width="400" height="400"></canvas>
+            <div id="analyzing" class="analyzing hidden">
+              <div class="scanline"></div>
+              <div class="ring"></div>
+              <div class="atext">Analyzing Geometric Signature...</div>
+            </div>
+          </div>
+          <div class="side">
+            <div class="controls">
+              <label class="slider"><span>BRUSH</span><input id="padBrush" type="range" min="3" max="30" value="10"><b id="padBrushLabel">10</b></label>
+              <div class="row">
+                <button id="padClear" class="btn" type="button">CLEAR</button>
+                <button id="padEquip" class="btn primary" type="button">EQUIP</button>
+                <button id="padClose" class="btn ghost" type="button">CANCEL</button>
+              </div>
+            </div>
+            <div id="legend" class="legend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/classifier.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/menu.js"></script>
+  <script src="js/engine.js"></script>
+</body>
+</html>
