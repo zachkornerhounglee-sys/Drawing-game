@@ -1,18 +1,9 @@
-# Canvas Combat & Cartography — GitHub Pages
+# Canvas Combat & Cartography — GitHub-ready single-file build
 
-## Publish on GitHub Pages
+## Publish it
 1. Extract this ZIP.
-2. Upload **the contents** of this folder to the root of your GitHub repository (so `index.html` is at the repository root).
-3. Keep the `js` and `css` folders and their files in place.
-4. In GitHub, open **Settings → Pages**, select **Deploy from a branch**, choose your main branch and `/(root)`, then Save.
-5. Open the published Pages URL and do a hard refresh (Ctrl+F5).
+2. Upload **index.html** to the root of your GitHub repository (replace the old index.html).
+3. In the repository, open **Settings → Pages**. Choose **Deploy from a branch**, select your main branch and **/(root)**, then Save.
+4. Open your GitHub Pages link and press **Ctrl+F5** to force-refresh the page.
 
-The HTML expects these paths:
-- `css/style.css`
-- `js/network.js`
-- `js/classifier.js`
-- `js/sprites.js`
-- `js/menu.js`
-- `js/engine.js`
-
-The pixel-art sprite atlases are embedded in `js/sprites.js`, so there are no separate model/image files to upload. The game is a 2D canvas game and uses sprite art rather than 3D models. Multiplayer signaling uses PeerJS from a third-party CDN; if that service or the CDN is blocked by a school network, solo play should still start after the network fallback timeout.
+All CSS, game logic, sprites, and sprite art are embedded in `index.html`, so there are no `js/` or `css/` folders to accidentally miss. The weapon/effect art is sprite-based 2D canvas art, not 3D models. Multiplayer uses PeerJS from a CDN; if that is unavailable or blocked by a network, the game should switch to solo mode.
