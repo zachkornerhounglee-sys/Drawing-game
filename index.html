@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Canvas Combat &amp; Cartography</title>
+  <title>Canvas Combat &amp; Cartography — v8</title>
   <style>
 /* ============================================================================
    style.css - dark cyberpunk UI, absolute layout, custom crosshair, glow bars
@@ -108,6 +108,20 @@ kbd {
 
 /* ---------- toolbar (left) ---------- */
 #toolbar { position: absolute; left: 14px; top: 14px; width: 220px; padding-bottom: 10px; display: flex; flex-direction: column; gap: 8px; z-index: 5; }
+  /* Platform drawing happens before the fight. Keep the old tile-editor hidden in this side-view build. */
+  #toolbar { display: none !important; }
+  #stageDesigner { position:absolute; z-index:12; top:14px; left:14px; width:min(310px, calc(100% - 28px)); padding:0 0 12px; display:flex; flex-direction:column; gap:10px; border-color:rgba(56,245,255,.52); box-shadow:0 0 26px rgba(56,245,255,.12), 0 10px 36px rgba(0,0,0,.28); }
+  #stageDesigner .stage-designer-body { padding:0 12px; display:flex; flex-direction:column; gap:9px; }
+  #stageDesigner .stage-title { color:#fff; font-size:11px; font-weight:900; letter-spacing:1.4px; }
+  #stageDesigner .stage-note { color:var(--dim); font-size:10px; line-height:1.55; }
+  #stageDesigner .stage-count { color:var(--cyan); font-size:10px; letter-spacing:1px; }
+  #stageDesigner .stage-controls { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  #stageDesigner #stageStartRound { grid-column:1 / -1; min-height:38px; font-weight:900; }
+  #stageDesigner .slider { grid-template-columns:1fr 80px 24px; }
+  #stageWait { position:absolute; z-index:11; top:20px; left:50%; transform:translateX(-50%); width:min(420px, calc(100% - 350px)); text-align:center; padding:12px 16px; background:rgba(6,10,28,.92); border:1px solid rgba(166,107,255,.6); border-radius:5px; box-shadow:0 0 24px rgba(166,107,255,.16); color:#fff; font-size:11px; font-weight:800; letter-spacing:1.3px; line-height:1.7; pointer-events:none; }
+  .stage-drawing-cursor { cursor:crosshair !important; }
+  @media(max-width:680px) { #stageDesigner { transform:scale(.86); transform-origin:top left; width:min(310px, calc(116% - 28px)); } #stageWait { top:auto; bottom:10px; width:calc(100% - 24px); } }
+
 #toolbar > :not(.panel-title) { margin: 0 10px; }
 #brushes { display: flex; flex-direction: column; gap: 4px; }
 .brush {
@@ -147,6 +161,12 @@ kbd {
 .d-title { font-size: 38px; letter-spacing: 8px; color: #ff4d6d; text-shadow: 0 0 24px #ff1744; font-weight: 700; }
 .d-sub { margin-top: 8px; color: #ffc2cf; letter-spacing: 3px; }
 #connecting { position: absolute; inset: 0; z-index: 7; display: flex; justify-content: center; align-items: center; letter-spacing: 6px; color: var(--cyan); text-shadow: 0 0 14px var(--cyan); background: rgba(4, 5, 10, 0.6); pointer-events: none; }
+#joinError { position:absolute; z-index:40; left:50%; top:50%; transform:translate(-50%,-50%); width:min(470px,calc(100% - 28px)); padding:24px; background:rgba(5,8,23,.97); border:1px solid rgba(255,77,109,.65); box-shadow:0 0 35px rgba(255,40,85,.20),0 20px 80px rgba(0,0,0,.5); color:#f2f5ff; text-align:center; }
+#joinError .je-title { color:#ff6681; font-size:20px; font-weight:900; letter-spacing:2px; }
+#joinError .je-detail { margin:12px 0 18px; color:#bdc7e9; font-size:12px; line-height:1.7; letter-spacing:.4px; }
+#joinError .je-actions { display:flex; justify-content:center; flex-wrap:wrap; gap:9px; }
+#joinError button { min-height:38px; padding:0 16px; cursor:pointer; }
+
 #hint { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 4; padding: 4px 10px; color: var(--dim); font-size: 10px; white-space: nowrap; background: rgba(6, 8, 18, 0.6); border-radius: 3px; pointer-events: none; }
 
 
@@ -303,6 +323,23 @@ kbd {
     <main id="stage">
       <canvas id="game" width="1280" height="720"></canvas>
 
+      <aside id="stageDesigner" class="panel hidden" aria-live="polite">
+        <div class="panel-title"><span class="stage-title">BUILD THE ARENA</span><span id="stagePlatformCount" class="stage-count">0 PLATFORMS</span></div>
+        <div class="stage-designer-body">
+          <div id="stageDrawHelp" class="stage-note">Drag across the arena to draw a platform. Each drag creates one solid horizontal platform. Only the host draws the map.</div>
+          <div id="stageHostControls">
+            <label class="slider"><span>THICKNESS</span><input id="stageThickness" type="range" min="8" max="28" step="2" value="14"><b id="stageThicknessLabel">14</b></label>
+            <div class="stage-controls">
+              <button id="stageUndo" class="btn small" type="button">UNDO</button>
+              <button id="stageClear" class="btn small" type="button">CLEAR ALL</button>
+              <button id="stageStartRound" class="btn primary wide" type="button" disabled>START ROUND →</button>
+            </div>
+            <div class="stage-note">Draw a long low platform for the floor, then add smaller platforms above it. You can undo or clear your design before starting.</div>
+          </div>
+          <div id="stageWait" class="stage-note hidden">WAITING FOR THE HOST TO FINISH DRAWING THE ARENA…</div>
+        </div>
+      </aside>
+
       <section id="hud" class="panel">
         <div class="hud-top">
           <canvas id="hudIcon" width="56" height="56"></canvas>
@@ -360,7 +397,7 @@ kbd {
     <div id="menu" class="hidden">
       <div class="menu-inner">
         <div class="menu-title">CANVAS COMBAT <i>&amp;</i> CARTOGRAPHY</div>
-        <div class="menu-sub">Draw your weapon. Paint your arena. Share the link.</div>
+        <div class="menu-sub">Draw the arena together before the fight. Then draw your weapon and brawl.</div>
 
         <div id="menuMain" class="menu-main">
           <button id="menuPlay" class="boil-btn" type="button" aria-label="Play"><canvas></canvas><span class="boil-fallback">PLAY</span></button>
@@ -432,7 +469,6 @@ kbd {
 
   </div>
 
-  <script async src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
 /* ============================================================================
    network.js - PeerJS WebRTC peer-to-peer layer
@@ -445,9 +481,9 @@ kbd {
 const Net = (function () {
   'use strict';
 
-  const S = { peer: null, isHost: true, myId: 'local', conns: new Map(), hostConn: null, ready: false, solo: false, roomLink: '' };
+  const S = { peer: null, isHost: true, myId: 'local', conns: new Map(), hostConn: null, ready: false, solo: false, roomLink: '', joining: false };
   const HANDLERS = {};
-  let bTimer = null, iTimer = null, joinTimer = null, initToken = 0;
+  let bTimer = null, iTimer = null, joinTimer = null, initToken = 0, peerLoadStarted = false, peerLoadDone = false, peerLoadResult = false, peerLoadCallbacks = [];
 
   function on(type, fn) { HANDLERS[type] = fn; }
   function fire(type, data, from) {
@@ -456,7 +492,6 @@ const Net = (function () {
     try { fn(data, from); } catch (e) { console.error('[Net] handler error in "' + type + '"', e); }
   }
   function $(id) { return document.getElementById(id); }
-
   function setStatus(text, cls) {
     const el = $('netStatus');
     if (el) { el.textContent = text; el.className = 'chip ' + (cls || ''); }
@@ -465,7 +500,7 @@ const Net = (function () {
     const el = $('peerCount');
     if (!el) return;
     if (S.isHost) { const n = S.conns.size + 1; el.textContent = n + (n === 1 ? ' PILOT' : ' PILOTS'); }
-    else el.textContent = 'GUEST';
+    else el.textContent = S.ready ? 'CONNECTED' : 'JOINING';
   }
   function buildLink(id) {
     const u = new URL(window.location.href);
@@ -480,6 +515,79 @@ const Net = (function () {
   }
   function hideLink() { const box = $('roomBox'); if (box) box.classList.add('hidden'); }
 
+  function setConnecting(message) {
+    const el = $('connecting');
+    if (!el) return;
+    el.textContent = message || 'CONNECTING TO MATCH...';
+    el.classList.remove('hidden');
+  }
+  function clearConnecting() { const el = $('connecting'); if (el) el.classList.add('hidden'); }
+  function hideJoinError() { const e = $('joinError'); if (e) e.remove(); }
+  function showJoinFailure(reason) {
+    S.ready = false; S.solo = false; S.joining = false; S.isHost = false;
+    if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
+    hideLink(); clearConnecting();
+    setStatus('JOIN FAILED', 'bad'); updateCount();
+    let box = $('joinError');
+    if (!box) {
+      box = document.createElement('section'); box.id = 'joinError'; box.className = 'panel';
+      const title = document.createElement('div'); title.className = 'je-title'; title.textContent = 'COULD NOT JOIN ROOM';
+      const detail = document.createElement('div'); detail.className = 'je-detail'; detail.id = 'joinErrorDetail';
+      const actions = document.createElement('div'); actions.className = 'je-actions';
+      const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'btn primary'; retry.textContent = 'RETRY JOIN';
+      retry.addEventListener('click', function () {
+        hideJoinError(); setConnecting('RECONNECTING TO ROOM...');
+        S.joining = true; init();
+      });
+      const back = document.createElement('button'); back.type = 'button'; back.className = 'btn ghost'; back.textContent = 'BACK TO MENU';
+      back.addEventListener('click', function () {
+        const u = new URL(window.location.href); u.searchParams.delete('room');
+        history.replaceState({}, '', u.toString());
+        hideJoinError(); clearConnecting(); S.joining = false; S.isHost = true;
+        setStatus('CHOOSE MODE', '');
+        if (typeof Menu !== 'undefined') Menu.open();
+      });
+      actions.appendChild(retry); actions.appendChild(back);
+      box.appendChild(title); box.appendChild(detail); box.appendChild(actions);
+      const stage = $('stage') || document.body; stage.appendChild(box);
+    }
+    const detail = $('joinErrorDetail');
+    if (detail) detail.textContent = 'The invite link could not connect to its host (' + String(reason || 'network unavailable').replace(/[<>]/g, '') + '). The game will not create a different room by accident. Check the link and network, then retry.';
+  }
+
+  function loadPeerJs(done) {
+    if (typeof Peer !== 'undefined') { done(true); return; }
+    if (peerLoadDone && peerLoadResult) { done(true); return; }
+    if (peerLoadDone && !peerLoadResult) { peerLoadDone = false; peerLoadResult = false; }
+    peerLoadCallbacks.push(done);
+    if (peerLoadStarted) return;
+    peerLoadStarted = true;
+    const urls = [
+      'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js',
+      'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'
+    ];
+    let index = 0, finished = false, timer = null;
+    function finish(ok) {
+      if (finished) return; finished = true;
+      if (timer) clearTimeout(timer);
+      peerLoadDone = true; peerLoadResult = !!ok; peerLoadStarted = false;
+      const callbacks = peerLoadCallbacks.slice(); peerLoadCallbacks = [];
+      callbacks.forEach(function (cb) { try { cb(!!ok); } catch (e) { console.error(e); } });
+    }
+    function next() {
+      if (typeof Peer !== 'undefined') { finish(true); return; }
+      if (index >= urls.length) { finish(false); return; }
+      const url = urls[index++];
+      const script = document.createElement('script');
+      script.async = true; script.src = url; script.crossOrigin = 'anonymous';
+      script.onload = function () { if (timer) clearTimeout(timer); if (typeof Peer !== 'undefined') finish(true); else next(); };
+      script.onerror = function () { if (timer) clearTimeout(timer); if (script.parentNode) script.parentNode.removeChild(script); next(); };
+      timer = setTimeout(function () { if (script.parentNode) script.parentNode.removeChild(script); next(); }, 6500);
+      document.head.appendChild(script);
+    }
+    next();
+  }
+
   function copyLink() {
     const input = $('roomLink'), btn = $('copyLink');
     if (!input) return;
@@ -491,8 +599,9 @@ const Net = (function () {
 
   function goSolo(reason, force) {
     if (S.ready && !force) return;
-    S.isHost = true; S.solo = true; S.myId = 'local'; S.ready = true;
-    hideLink();
+    if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
+    S.isHost = true; S.solo = true; S.myId = 'local'; S.ready = true; S.joining = false;
+    hideLink(); hideJoinError(); clearConnecting();
     setStatus('SOLO (OFFLINE)' + (reason ? ' - ' + reason : ''), 'warn');
     updateCount();
     fire('ready', { host: true, id: 'local', solo: true });
@@ -502,16 +611,14 @@ const Net = (function () {
     initToken++;
     if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
     stopBroadcast(); stopInput();
-    if (S.peer) { try { S.peer.destroy(); } catch (_) { /* ignore */ } }
-    S.peer = null; S.hostConn = null; S.conns.clear(); S.ready = false; S.solo = false;
+    if (S.peer) { try { S.peer.destroy(); } catch (_) {} }
+    S.peer = null; S.hostConn = null; S.conns.clear(); S.ready = false; S.solo = false; S.joining = false;
     goSolo('single-player', true);
   }
 
   function wireHostConn(conn) {
     conn.on('open', function () {
-      S.conns.set(conn.peer, conn);
-      updateCount();
-      fire('peerJoin', null, conn.peer);
+      S.conns.set(conn.peer, conn); updateCount(); fire('peerJoin', null, conn.peer);
     });
     conn.on('data', function (d) { if (d && d.t) fire(d.t, d, conn.peer); });
     conn.on('close', function () {
@@ -523,58 +630,119 @@ const Net = (function () {
   }
 
   function startAsHost() {
-    S.isHost = true; S.ready = false;
-    if (S.peer) { try { S.peer.destroy(); } catch (_) { /* ignore */ } }
-    setStatus('CONNECTING TO SIGNAL...', 'warn');
-    let peer;
-    try { peer = new Peer(); } catch (e) { goSolo('no peer lib'); return; }
-    S.peer = peer;
-    peer.on('open', function (id) {
-      S.myId = id; S.ready = true;
-      showLink(id);
-      setStatus('HOSTING', 'ok');
-      updateCount();
-      fire('ready', { host: true, id: id, solo: false });
-    });
-    peer.on('connection', wireHostConn);
-    peer.on('error', function (err) {
-      console.warn('[Net] peer error', err && err.type);
-      if (!S.ready) goSolo(err && err.type);
-      else setStatus('NET ERROR: ' + (err && err.type), 'bad');
-    });
-    peer.on('disconnected', function () { if (S.ready && !S.solo) { setStatus('SIGNAL LOST (PEERS STAY LIVE)', 'warn'); } });
-    setTimeout(function () { if (!S.ready) goSolo('signal timeout'); }, 9000);
+    if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
+    S.isHost = true; S.ready = false; S.solo = false; S.joining = false;
+    if (S.peer) { try { S.peer.destroy(); } catch (_) {} }
+    let tries = 0; const maxTries = 3; const token = initToken;
+    function tryHost() {
+      if (token !== initToken) return;
+      tries++;
+      setStatus(tries === 1 ? 'CREATING ROOM...' : 'RETRYING HOST ' + tries + '/' + maxTries, 'warn');
+      let peer;
+      try { peer = new Peer(undefined, { debug: 0 }); }
+      catch (e) {
+        if (tries < maxTries) { setTimeout(tryHost, 700 * tries); return; }
+        goSolo('network unavailable'); return;
+      }
+      S.peer = peer;
+      let done = false;
+      function fail(reason) {
+        if (done || S.peer !== peer || S.ready) return;
+        done = true;
+        if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
+        try { peer.destroy(); } catch (_) {}
+        if (S.peer === peer) S.peer = null;
+        if (tries < maxTries) { setStatus('RETRYING HOST ' + (tries + 1) + '/' + maxTries, 'warn'); setTimeout(tryHost, 700 * tries); }
+        else goSolo(reason || 'network unavailable');
+      }
+      peer.on('open', function (id) {
+        if (done || S.peer !== peer || token !== initToken) return;
+        done = true; if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
+        S.myId = id; S.ready = true; S.solo = false;
+        showLink(id); hideJoinError(); clearConnecting(); setStatus('HOSTING', 'ok'); updateCount();
+        fire('ready', { host: true, id: id, solo: false });
+      });
+      peer.on('connection', wireHostConn);
+      peer.on('error', function (err) {
+        console.warn('[Net] host peer error', err && err.type);
+        if (!S.ready) fail(err && err.type || 'signalling error');
+        else setStatus('NET WARNING: ' + (err && err.type || 'connection'), 'warn');
+      });
+      peer.on('disconnected', function () {
+        if (!S.ready || S.solo) return;
+        setStatus('RECONNECTING SIGNAL...', 'warn');
+        try { peer.reconnect(); } catch (_) { setStatus('SIGNAL LOST (PEERS MAY STAY LIVE)', 'warn'); }
+      });
+      joinTimer = setTimeout(function () { fail('signalling timeout'); }, 12000);
+    }
+    tryHost();
   }
 
   function joinRoom(room) {
-    S.isHost = false; S.ready = false;
-    setStatus('JOINING ' + room.slice(0, 6) + '...', 'warn');
-    let peer;
-    try { peer = new Peer(); } catch (e) { startAsHost(); return; }
-    S.peer = peer;
-    peer.on('open', function (id) {
-      S.myId = id;
-      const conn = peer.connect(room, { reliable: true });
-      S.hostConn = conn;
-      conn.on('open', function () {
-        clearTimeout(joinTimer);
-        S.ready = true; hideLink(); updateCount();
-        setStatus('CONNECTED', 'ok');
-        fire('ready', { host: false, id: id, solo: false });
+    room = String(room || '').trim();
+    if (!room || room.length > 256) { showJoinFailure('invalid invite link'); return; }
+    S.isHost = false; S.ready = false; S.solo = false; S.joining = true;
+    let tries = 0; const maxTries = 3; const token = initToken; let finished = false;
+    setConnecting('CONNECTING TO ROOM...');
+    function attempt() {
+      if (token !== initToken || finished) return;
+      tries++;
+      setStatus(tries === 1 ? 'JOINING ROOM...' : 'RETRYING JOIN ' + tries + '/' + maxTries, 'warn');
+      let peer;
+      try { peer = new Peer(undefined, { debug: 0 }); }
+      catch (e) { retry('peer setup failed'); return; }
+      S.peer = peer; let conn = null, localDone = false;
+      function retry(reason) {
+        if (localDone || finished || token !== initToken) return;
+        localDone = true;
+        if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
+        if (S.peer === peer) S.peer = null;
+        S.hostConn = null;
+        try { peer.destroy(); } catch (_) {}
+        if (tries < maxTries) {
+          setStatus('RETRYING JOIN ' + (tries + 1) + '/' + maxTries, 'warn');
+          setConnecting('RETRYING ROOM CONNECTION...');
+          setTimeout(attempt, 500 * tries);
+        } else { finished = true; showJoinFailure(reason || 'room unavailable'); }
+      }
+      peer.on('open', function (id) {
+        if (finished || localDone || token !== initToken || S.peer !== peer) return;
+        S.myId = id;
+        try { conn = peer.connect(room, { reliable: true, serialization: 'json' }); }
+        catch (e) { retry('could not open room connection'); return; }
+        S.hostConn = conn;
+        conn.on('open', function () {
+          if (finished || localDone || token !== initToken || S.peer !== peer) return;
+          localDone = true; finished = true;
+          if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
+          S.ready = true; S.solo = false; S.joining = false;
+          hideLink(); hideJoinError(); updateCount(); setStatus('CONNECTED', 'ok'); clearConnecting();
+          fire('ready', { host: false, id: id, solo: false });
+        });
+        conn.on('data', function (d) { if (d && d.t) fire(d.t, d, conn.peer); });
+        conn.on('close', function () {
+          if (!S.ready) { retry('host did not accept the connection'); return; }
+          setStatus('HOST DISCONNECTED', 'bad'); stopInput(); fire('hostLeft');
+        });
+        conn.on('error', function (err) {
+          if (!S.ready) retry(err && err.type || 'room connection error');
+          else setStatus('LINK WARNING', 'bad');
+        });
       });
-      conn.on('data', function (d) { if (d && d.t) fire(d.t, d, conn.peer); });
-      conn.on('close', function () { setStatus('HOST DISCONNECTED', 'bad'); stopInput(); fire('hostLeft'); });
-      conn.on('error', function () { setStatus('LINK ERROR', 'bad'); });
-    });
-    peer.on('error', function (err) {
-      if (S.ready) { setStatus('NET ERROR: ' + (err && err.type), 'bad'); return; }
-      console.warn('[Net] join failed', err && err.type);
-      try { peer.destroy(); } catch (_) { /* ignore */ }
-      startAsHost();
-    });
-    joinTimer = setTimeout(function () {
-      if (!S.ready) { try { peer.destroy(); } catch (_) { /* ignore */ } startAsHost(); }
-    }, 12000);
+      peer.on('error', function (err) {
+        if (S.ready || finished || localDone || S.peer !== peer) return;
+        console.warn('[Net] join attempt failed', err && err.type);
+        retry(err && err.type || 'signalling error');
+      });
+      peer.on('disconnected', function () {
+        if (S.ready || finished || S.peer !== peer) return;
+        try { peer.reconnect(); } catch (_) { retry('signalling disconnected'); }
+      });
+      joinTimer = setTimeout(function () {
+        if (!S.ready && !finished && !localDone && S.peer === peer) retry(conn ? 'host connection timed out' : 'signalling timed out');
+      }, 8500);
+    }
+    attempt();
   }
 
   let copyBound = false;
@@ -584,39 +752,39 @@ const Net = (function () {
     if (S.ready && S.peer && !S.solo) return;
     const token = ++initToken;
     if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; }
-    if (S.peer) { try { S.peer.destroy(); } catch (_) { /* ignore */ } }
+    if (S.peer) { try { S.peer.destroy(); } catch (_) {} }
     S.peer = null; S.ready = false; S.solo = false; S.hostConn = null; S.conns.clear();
     const room = new URLSearchParams(window.location.search).get('room');
-    if (typeof Peer !== 'undefined') { if (room) joinRoom(room); else startAsHost(); return; }
-    // Multiplayer starts only when selected. Wait briefly for the optional PeerJS script.
-    setStatus('LOADING NETWORK...', 'warn');
-    let checks = 0;
-    function waitForPeer() {
+    S.joining = !!room;
+    if (room) { setConnecting('CONNECTING TO ROOM...'); setStatus('LOADING ROOM...', 'warn'); }
+    else setStatus('LOADING MULTIPLAYER...', 'warn');
+    loadPeerJs(function (ok) {
       if (token !== initToken) return;
-      if (typeof Peer !== 'undefined') { if (room) joinRoom(room); else startAsHost(); return; }
-      if (++checks >= 20) { goSolo('PeerJS unavailable'); return; }
-      setTimeout(waitForPeer, 250);
-    }
-    waitForPeer();
+      if (!ok || typeof Peer === 'undefined') {
+        if (room) showJoinFailure('PeerJS could not load (CDNs may be blocked)');
+        else goSolo('PeerJS could not load');
+        return;
+      }
+      if (room) joinRoom(room); else startAsHost();
+    });
   }
 
-  function broadcast(msg) { S.conns.forEach(function (c) { if (c.open) c.send(msg); }); }
-  function sendTo(id, msg) { const c = S.conns.get(id); if (c && c.open) c.send(msg); }
-  function sendHost(msg) { if (S.hostConn && S.hostConn.open) S.hostConn.send(msg); }
+  function broadcast(msg) { S.conns.forEach(function (c) { if (c.open) { try { c.send(msg); } catch (e) { console.warn('[Net] send failed', e); } } }); }
+  function sendTo(id, msg) { const c = S.conns.get(id); if (c && c.open) { try { c.send(msg); } catch (e) { console.warn('[Net] send failed', e); } } }
+  function sendHost(msg) { if (S.hostConn && S.hostConn.open) { try { S.hostConn.send(msg); } catch (e) { console.warn('[Net] input send failed', e); } } }
   function peerCount() { return S.conns.size; }
-
   function startHostBroadcast(buildSnapshot, hz) {
     stopBroadcast();
     bTimer = setInterval(function () {
       if (S.conns.size === 0) { buildSnapshot(false); return; }
       const snap = buildSnapshot(true);
       if (snap) broadcast(snap);
-    }, 1000 / (hz || 60));
+    }, 1000 / (hz || 30));
   }
   function stopBroadcast() { if (bTimer) { clearInterval(bTimer); bTimer = null; } }
   function startClientInput(getInput, hz) {
     stopInput();
-    iTimer = setInterval(function () { sendHost(getInput()); }, 1000 / (hz || 60));
+    iTimer = setInterval(function () { sendHost(getInput()); }, 1000 / (hz || 30));
   }
   function stopInput() { if (iTimer) { clearInterval(iTimer); iTimer = null; } }
 
@@ -1466,7 +1634,8 @@ const Menu = (function () {
     shake: 0, time: 0, nextId: 1, tick: 0, paint: false, brush: T.WALL, brushSize: 2,
     mouse: { x: W / 2, y: H / 2, down: false, right: false, lx: null, ly: null },
     keys: {}, botsOn: true, modalOpen: false, menu: false, pad: false, attract: false, killfeed: [], lastSnap: 0,
-    roundsDrawEnabled: false, weaponArts: new Map(), weaponArtImages: new Map()
+    roundsDrawEnabled: false, weaponArts: new Map(), weaponArtImages: new Map(),
+    platforms: [], stageDesign: false, stageDrag: null, stageThickness: 14
   };
   let pendingInitialDraw = false, lastSelfDead = null;
   window.Game = G;
@@ -1612,7 +1781,85 @@ const Menu = (function () {
       inp: { mx: W / 2, my: H / 2, u: 0, d: 0, l: 0, r: 0, f: 0 }, ai: { t: 0, strafe: 1, err: 0 }
     };
   }
-  function spawnPoint() { return { x: rnd(150, W-150), y: 580 }; }
+  function spawnPoint() {
+    const platforms = G.platforms || [];
+    if (!platforms.length) return { x: rnd(150, W - 150), y: H - 40 };
+    // Prefer the lowest broad platform for safe spawning.
+    const candidates = platforms.filter(function (p) { return p.y >= H * 0.58 && p.w >= 150; });
+    const pool = candidates.length ? candidates : platforms;
+    const floor = pool.reduce(function (a, b) { return b.y > a.y ? b : a; }, pool[0]);
+    return { x: rnd(floor.x + Math.min(35, floor.w * 0.15), floor.x + floor.w - Math.min(35, floor.w * 0.15)), y: floor.y };
+  }
+  function sanitizePlatforms(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.slice(0, 80).map(function (p) {
+      const x = clamp(Number(p.x) || 0, 20, W - 40);
+      const y = clamp(Number(p.y) || 100, 80, H - 24);
+      const w = clamp(Number(p.w) || 0, 40, W - x - 20);
+      const h = clamp(Number(p.h) || 14, 8, 28);
+      return { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
+    }).filter(function (p) { return p.w >= 40; });
+  }
+  function setPlatforms(arr) {
+    G.platforms = sanitizePlatforms(arr);
+    updateStageDesignerUi();
+  }
+  function publishPlatforms() {
+    if (!G.isHost || Net.state.solo) return;
+    Net.broadcast({ t: 'stage', p: G.platforms, design: G.stageDesign });
+  }
+  function updateStageDesignerUi() {
+    const panel = $('stageDesigner');
+    if (panel) panel.classList.toggle('hidden', !G.stageDesign);
+    ['hud','scoreboard','killfeed','hint','deathOverlay'].forEach(function (id) {
+      const el = $(id); if (el) el.classList.toggle('hidden', G.stageDesign);
+    });
+    const hostControls = $('stageHostControls');
+    if (hostControls) hostControls.classList.toggle('hidden', !G.isHost);
+    const wait = $('stageWait');
+    if (wait) wait.classList.toggle('hidden', G.isHost);
+    const count = $('stagePlatformCount');
+    if (count) count.textContent = G.platforms.length + (G.platforms.length === 1 ? ' PLATFORM' : ' PLATFORMS');
+    const start = $('stageStartRound');
+    if (start) start.disabled = !G.isHost || G.platforms.length === 0;
+    const help = $('stageDrawHelp');
+    if (help) help.textContent = G.isHost ? 'Drag across the arena to draw a platform. Each drag creates one solid horizontal platform. Only the host draws the map.' : 'The host is drawing the arena. Your game will start when the map is confirmed.';
+  }
+  function relocatePlayersToPlatforms() {
+    G.players.forEach(function (p) {
+      const spot = spawnPoint();
+      p.x = p.tx = spot.x; p.y = p.ty = spot.y; p.vx = p.vy = 0;
+      p.grounded = true; p.dead = false; p.hp = p.max; p.rt = 0;
+    });
+  }
+  function startRound() {
+    if (!G.isHost || !G.stageDesign || !G.platforms.length) return;
+    G.stageDesign = false;
+    G.started = true;
+    G.stageDrag = null;
+    relocatePlayersToPlatforms();
+    updateStageDesignerUi();
+    if (!Net.state.solo) {
+      Net.broadcast({ t: 'stage', p: G.platforms, design: false });
+      Net.broadcast({ t: 'roundstart', p: G.platforms });
+    }
+    // Each human draws their weapon after the stage is locked in.
+    pendingInitialDraw = false;
+    setTimeout(function () { DrawPad.open(true); }, 100);
+  }
+  function finishStageDrag() {
+    if (!G.stageDesign || !G.isHost || !G.stageDrag) return;
+    const d = G.stageDrag; G.stageDrag = null;
+    const x1 = clamp(Math.min(d.x, d.ex), 20, W - 40);
+    const x2 = clamp(Math.max(d.x, d.ex), 20, W - 20);
+    const width = x2 - x1;
+    if (width < 44) { updateStageDesignerUi(); return; }
+    const y = clamp(d.y, 80, H - 24);
+    G.platforms.push({ x: Math.round(x1), y: Math.round(y), w: Math.round(width), h: G.stageThickness });
+    G.platforms = sanitizePlatforms(G.platforms);
+    updateStageDesignerUi();
+    publishPlatforms();
+  }
   function addPlayer(id, name, bot) {
     const color = PALETTE[G.players.size % PALETTE.length];
     const p = blankPlayer(id, name, color);
@@ -1745,7 +1992,7 @@ const Menu = (function () {
     // jump uses the configured UP key; gravity and ledges create platform-fighter movement
     if(inp.u && p.grounded){p.vy=-440;p.grounded=false;p.jumps=1;}
     p.vy+=1050*dt;p.y+=p.vy*dt;p.grounded=false;
-    const platforms=[{x:0,y:580,w:W},{x:270,y:440,w:210},{x:800,y:440,w:210},{x:525,y:350,w:230}];
+    const platforms = G.platforms || [];
     platforms.forEach(pl=>{if(p.vy>=0&&p.x>=pl.x-12&&p.x<=pl.x+pl.w+12&&p.y>=pl.y&&p.y-p.vy*dt<=pl.y){p.y=pl.y;p.vy=0;p.grounded=true;}});
     if(p.y>H+90){p.x=rnd(120,W-120);p.y=580;p.vx=0;p.vy=0;p.grounded=true;p.hp-=8;}
     if(!p.dead&&inp.f)tryFire(p);
@@ -1897,6 +2144,7 @@ const Menu = (function () {
 
   function getInput() {
     const m = G.mouse;
+    if (G.stageDesign) return { t: 'in', mx: Math.round(m.x), my: Math.round(m.y), u: 0, d: 0, l: 0, r: 0, f: 0 };
     return {
       t: 'in', mx: Math.round(m.x), my: Math.round(m.y),
       u: keyDown('moveUp') ? 1 : 0, d: keyDown('moveDown') ? 1 : 0,
@@ -1920,29 +2168,30 @@ const Menu = (function () {
       G.players.clear(); G.proj = []; G.waves = []; G.events = []; G.pending = [];
       G.weaponArts.clear(); G.weaponArtImages.clear();
       G.isHost = info.host; G.myId = info.id; G.started = true;
+      G.stageDesign = true;
+      G.platforms = [];
       lastSelfDead = null;
       const tag = $('hostTag');
       if (info.host) {
         buildDefaultMap();
         addPlayer(G.myId, 'YOU', false);
         setBots(true);
-        if (!info.solo) Net.startHostBroadcast(buildSnapshot, 60);
+        if (!info.solo) Net.startHostBroadcast(buildSnapshot, 30);
         if (tag) { tag.textContent = 'HOST'; tag.classList.remove('guest'); }
+        updateStageDesignerUi();
       } else {
         $('connecting').classList.remove('hidden');
-        Net.startClientInput(getInput, 60);
+        Net.startClientInput(getInput, 30);
         if (tag) { tag.textContent = 'GUEST'; tag.classList.add('guest'); }
         setPaintEnabled(false);
+        updateStageDesignerUi();
       }
-      if (pendingInitialDraw) {
-        pendingInitialDraw = false;
-        setTimeout(function () { DrawPad.open(true); }, 90);
-      }
+      // Initial weapon drawing is deliberately deferred until the host confirms the map.
     });
     Net.on('peerJoin', function (_, id) {
       if (!G.isHost) return;
       const p = addPlayer(id, 'PILOT-' + id.slice(0, 4).toUpperCase(), false);
-      Net.sendTo(id, { t: 'welcome', id: id, map: mapToString(), arts: Array.from(G.weaponArts.entries()).map(function (a) { return { id: a[0], art: a[1] }; }) });
+      Net.sendTo(id, { t: 'welcome', id: id, map: mapToString(), platforms: G.platforms, stageDesign: G.stageDesign, arts: Array.from(G.weaponArts.entries()).map(function (a) { return { id: a[0], art: a[1] }; }) });
       pushKill(p.name + ' joined the grid');
     });
     Net.on('peerLeave', function (_, id) {
@@ -1952,7 +2201,7 @@ const Menu = (function () {
     });
     Net.on('in', function (d, from) {
       if (!G.isHost) return;
-      const p = G.players.get(from); if (!p) return;
+      const p = G.players.get(from); if (!p || G.stageDesign) return;
       const i = p.inp;
       i.mx = clamp(+d.mx || 0, 0, W); i.my = clamp(+d.my || 0, 0, H);
       i.u = d.u ? 1 : 0; i.d = d.d ? 1 : 0; i.l = d.l ? 1 : 0; i.r = d.r ? 1 : 0; i.f = d.f ? 1 : 0;
@@ -1968,8 +2217,25 @@ const Menu = (function () {
     Net.on('welcome', function (d) {
       if (G.isHost) return;
       G.myId = d.id; mapFromString(d.map);
+      setPlatforms(d.platforms || []);
+      G.stageDesign = d.stageDesign !== false;
       (d.arts || []).forEach(function (a) { if (a && a.id && a.art) setWeaponArt(a.id, a.art); });
       $('connecting').classList.add('hidden');
+      updateStageDesignerUi();
+      if (!G.stageDesign) setTimeout(function () { DrawPad.open(true); }, 100);
+    });
+    Net.on('stage', function (d) {
+      if (G.isHost || !d) return;
+      setPlatforms(d.p || []);
+      if (typeof d.design === 'boolean') G.stageDesign = d.design;
+      updateStageDesignerUi();
+    });
+    Net.on('roundstart', function (d) {
+      if (G.isHost) return;
+      if (d && d.p) setPlatforms(d.p);
+      G.stageDesign = false; G.started = true; G.stageDrag = null;
+      updateStageDesignerUi();
+      setTimeout(function () { DrawPad.open(true); }, 100);
     });
     Net.on('map', function (d) {
       if (G.isHost) return;
@@ -2153,8 +2419,7 @@ const Menu = (function () {
     g.globalAlpha=1;
     // distant skyline and spotlights
     for(let i=0;i<16;i++){const x=i*88-20, hh=80+(i*47)%130;g.fillStyle='rgba(10,14,39,.8)';g.fillRect(x,500-hh,62,hh);g.fillStyle='rgba(75,104,255,.25)';for(let yy=510-hh;yy<495;yy+=17)g.fillRect(x+10,yy,4,6);}
-    const platforms=[{x:70,y:580,w:1140,h:42},{x:270,y:440,w:210,h:16},{x:800,y:440,w:210,h:16},{x:525,y:350,w:230,h:16}];
-    platforms.forEach((p,i)=>{g.fillStyle='#0a1025';g.fillRect(p.x,p.y,p.w,p.h);g.fillStyle=i===0?'#38f5ff':'#a66bff';g.shadowColor=g.fillStyle;g.shadowBlur=18;g.fillRect(p.x,p.y,p.w,4);g.shadowBlur=0;g.fillStyle='rgba(255,255,255,.12)';g.fillRect(p.x,p.y+6,p.w,2);});
+    (G.platforms || []).forEach((p,i)=>{g.fillStyle='#0a1025';g.fillRect(p.x,p.y,p.w,p.h);g.fillStyle=i===0?'#38f5ff':'#a66bff';g.shadowColor=g.fillStyle;g.shadowBlur=18;g.fillRect(p.x,p.y,p.w,4);g.shadowBlur=0;g.fillStyle='rgba(255,255,255,.12)';g.fillRect(p.x,p.y+6,p.w,2);g.fillStyle='rgba(4,8,22,.75)';g.fillRect(p.x,p.y+p.h-3,p.w,3);});
     g.restore();
   }
 
@@ -2296,13 +2561,31 @@ const Menu = (function () {
     drawTerrain();
     ctx.save();ctx.font='bold 12px monospace';ctx.fillStyle='rgba(220,235,255,.7)';ctx.textAlign='left';ctx.fillText('ARENA BRAWL  •  SIDE-VIEW PLATFORM FIGHTER',18,24);ctx.restore();
     if (G.paint) { ctx.drawImage(gridLayer, 0, 0); }
-    drawWaves();
-    G.players.forEach(drawPlayer);
-    drawProjectiles();
-    drawFx();
+    if (!G.stageDesign) {
+      drawWaves();
+      G.players.forEach(drawPlayer);
+      drawProjectiles();
+      drawFx();
+    } else {
+      // Platform placement preview is only a guide; the host commits with mouse-up.
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,.10)'; ctx.lineWidth = 1; ctx.setLineDash([5,9]);
+      for (let y=100; y<H; y+=80) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(255,255,255,.85)';ctx.textAlign='center';ctx.font='900 18px ui-monospace, monospace';
+      ctx.fillText(G.isHost ? 'DRAW YOUR ARENA' : 'ARENA UNDER CONSTRUCTION', W/2, H-52);
+      ctx.font='12px ui-monospace, monospace';ctx.fillStyle='rgba(215,226,255,.70)';
+      ctx.fillText(G.isHost ? 'CLICK + DRAG TO PLACE PLATFORMS  •  MINIMUM LENGTH 44 PX' : 'WAITING FOR HOST TO CONFIRM THE STAGE', W/2, H-28);
+      if (G.stageDrag && G.isHost) {
+        const x=Math.min(G.stageDrag.x,G.stageDrag.ex), w=Math.abs(G.stageDrag.ex-G.stageDrag.x), y=G.stageDrag.y, h=G.stageThickness;
+        ctx.fillStyle='rgba(56,245,255,.24)';ctx.fillRect(x,y,w,h);
+        ctx.strokeStyle='#38f5ff';ctx.lineWidth=2;ctx.shadowColor='#38f5ff';ctx.shadowBlur=14;ctx.strokeRect(x,y,w,h);ctx.shadowBlur=0;
+      }
+      ctx.restore();
+    }
     if (G.paint && G.isHost) drawBrushPreview();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (G.paint) {
+    if (G.paint && !G.stageDesign) {
       ctx.fillStyle = 'rgba(180,255,57,0.9)'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
       ctx.fillText(G.isHost ? 'PAINT MODE: LMB paints, RMB erases' : 'PAINT MODE: HOST ONLY (you can watch)', W / 2, 20);
     }
@@ -2421,6 +2704,12 @@ const Menu = (function () {
   function setBrushSize(n) {
     G.brushSize = clamp(n, 1, 6); $('brushSize').value = G.brushSize; $('brushSizeLabel').textContent = G.brushSize;
   }
+  function setStageThickness(n) {
+    G.stageThickness = clamp(Math.round(n / 2) * 2, 8, 28);
+    const input = $('stageThickness'), label = $('stageThicknessLabel');
+    if (input) input.value = G.stageThickness;
+    if (label) label.textContent = String(G.stageThickness);
+  }
   function mouseToCanvas(e) {
     const r = canvas.getBoundingClientRect();
     G.mouse.x = clamp((e.clientX - r.left) * W / r.width, 0, W); G.mouse.y = clamp((e.clientY - r.top) * H / r.height, 0, H);
@@ -2437,6 +2726,11 @@ const Menu = (function () {
     canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     canvas.addEventListener('mousemove', function (e) {
       mouseToCanvas(e);
+      if (G.stageDesign && G.isHost && G.stageDrag) {
+        G.stageDrag.ex = G.mouse.x;
+        G.stageDrag.ey = G.mouse.y;
+        return;
+      }
       if (G.paint && G.isHost && (G.mouse.down || G.mouse.right)) {
         const t = G.mouse.right ? T.EMPTY : G.brush;
         if (G.mouse.lx === null) paintAt(G.mouse.x, G.mouse.y, t); else paintStroke(G.mouse.lx, G.mouse.ly, G.mouse.x, G.mouse.y, t);
@@ -2446,14 +2740,22 @@ const Menu = (function () {
     canvas.addEventListener('mousedown', function (e) {
       mouseToCanvas(e);
       if (actx && actx.state === 'suspended') actx.resume();
+      if (G.stageDesign) {
+        e.preventDefault();
+        if (G.isHost && e.button === 0) G.stageDrag = { x: G.mouse.x, y: G.mouse.y, ex: G.mouse.x, ey: G.mouse.y };
+        return;
+      }
       if (e.button === 2) G.mouse.right = true; else G.mouse.down = true;
       if (G.paint && G.isHost) {
         const t = e.button === 2 ? T.EMPTY : G.brush;
         paintAt(G.mouse.x, G.mouse.y, t); G.mouse.lx = G.mouse.x; G.mouse.ly = G.mouse.y;
       }
     });
-    window.addEventListener('mouseup', function (e) { if (e.button === 2) G.mouse.right = false; else G.mouse.down = false; G.mouse.lx = null; });
-    canvas.addEventListener('wheel', function (e) { if (!G.paint || !G.isHost) return; e.preventDefault(); setBrushSize(G.brushSize + (e.deltaY < 0 ? 1 : -1)); }, { passive: false });
+    window.addEventListener('mouseup', function (e) {
+      if (G.stageDesign && G.stageDrag) { finishStageDrag(); G.mouse.down = false; G.mouse.right = false; return; }
+      if (e.button === 2) G.mouse.right = false; else G.mouse.down = false; G.mouse.lx = null;
+    });
+    canvas.addEventListener('wheel', function (e) { if (G.stageDesign && G.isHost) { e.preventDefault(); setStageThickness(G.stageThickness + (e.deltaY < 0 ? 2 : -2)); return; } if (!G.paint || !G.isHost) return; e.preventDefault(); setBrushSize(G.brushSize + (e.deltaY < 0 ? 1 : -1)); }, { passive: false });
     window.addEventListener('blur', releaseInputs);
 
     window.addEventListener('keydown', function (e) {
@@ -2471,18 +2773,14 @@ const Menu = (function () {
       if (G.modalOpen) return;
       G.keys[e.code] = true;
       if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') e.preventDefault();
-      if (e.code === bindCode('drawWeapon')) DrawPad.open();
-      else if (e.code === bindCode('toggleEditor') && G.isHost) setPaint(!G.paint);
-      else if (G.isHost) {
-        const terrainActions = [['paintWall', T.WALL], ['paintBoost', T.BOOST], ['paintAcid', T.ACID], ['paintIce', T.ICE], ['paintHeal', T.HEAL], ['erase', T.EMPTY]];
-        const match = terrainActions.find(function (a) { return e.code === bindCode(a[0]); });
-        if (match) { setBrush(match[1]); if (!G.paint) setPaint(true); }
-      }
+      if (e.code === bindCode('drawWeapon') && !G.stageDesign) DrawPad.open();
+      // Platform maps are designed only in the pre-round drawing phase; the legacy tile editor is disabled.
+      else if (e.code === bindCode('toggleEditor')) { /* intentionally unused in side-view mode */ }
     });
     window.addEventListener('keyup', function (e) { G.keys[e.code] = false; if (e.code === 'Space') e.preventDefault(); });
     document.addEventListener('click', function (e) { if (e.target && e.target.tagName === 'BUTTON') e.target.blur(); });
 
-    $('forgeBtn').addEventListener('click', function () { DrawPad.open(); });
+    $('forgeBtn').addEventListener('click', function () { if (!G.stageDesign) DrawPad.open(); });
     $('paintToggle').addEventListener('click', function () { setPaint(!G.paint); });
     document.querySelectorAll('.brush').forEach(function (b) { b.addEventListener('click', function () { setBrush(+b.dataset.brush); if (!G.paint) setPaint(true); }); });
     $('brushSize').addEventListener('input', function (e) { setBrushSize(+e.target.value); });
@@ -2493,7 +2791,11 @@ const Menu = (function () {
       if (!G.isHost) return; clearMap(); G.changes = []; Net.broadcast({ t: 'mapfull', m: mapToString() });
     });
     $('botsToggle').addEventListener('click', function () { if (G.isHost) setBots(!G.botsOn); });
-    setBrush(T.WALL); setBrushSize(2);
+    $('stageThickness').addEventListener('input', function (e) { setStageThickness(+e.target.value); });
+    $('stageUndo').addEventListener('click', function () { if (!G.isHost || !G.stageDesign) return; G.platforms.pop(); updateStageDesignerUi(); publishPlatforms(); });
+    $('stageClear').addEventListener('click', function () { if (!G.isHost || !G.stageDesign) return; G.platforms = []; G.stageDrag = null; updateStageDesignerUi(); publishPlatforms(); });
+    $('stageStartRound').addEventListener('click', startRound);
+    setBrush(T.WALL); setBrushSize(2); setStageThickness(14); updateStageDesignerUi();
 
     initKeybinds();
     DrawPad.init({
@@ -2528,7 +2830,7 @@ const Menu = (function () {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     G.time += dt;
     G.attract = G.menu && Net.peerCount() === 0;
-    if (G.isHost && G.started) {
+    if (G.isHost && G.started && !G.stageDesign) {
       const p = me();
       if (p) { const inp = getInput(); p.inp.mx = inp.mx; p.inp.my = inp.my; p.inp.u = inp.u; p.inp.d = inp.d; p.inp.l = inp.l; p.inp.r = inp.r; p.inp.f = inp.f; }
       acc += dt;
@@ -2542,17 +2844,22 @@ const Menu = (function () {
 
   function boot() {
     buildDefaultMap();
+    G.platforms = []; G.stageDesign = false;
     wireUi();
+    updateStageDesignerUi();
     setupNet();
-    // Invite links join automatically; normal visits wait until Multiplayer is selected.
+    // Invite links immediately join their target room and bypass the title menu.
     const roomInvite = new URLSearchParams(window.location.search).get('room');
-    if (roomInvite) Net.init();
-    else {
+    if (roomInvite) {
+      G.started = false; G.isHost = false;
+      const joinOverlay = $('connecting'); if (joinOverlay) { joinOverlay.textContent = 'CONNECTING TO ROOM...'; joinOverlay.classList.remove('hidden'); }
+      Net.init();
+    } else {
       const status = $('netStatus');
       if (status) { status.textContent = 'CHOOSE MODE'; status.className = 'chip'; }
       const count = $('peerCount'); if (count) count.textContent = '1 PILOT';
+      Menu.open();
     }
-    Menu.open();
     requestAnimationFrame(frame);
   }
   boot();
