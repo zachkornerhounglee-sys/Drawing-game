@@ -10,13 +10,21 @@ const TEXT_ATLAS_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACUwAAACNCA
 const Sprites = (function () {
   'use strict';
   const atlas = new Image(), textImg = new Image();
-  let loaded = 0; const waiters = [];
-  function done() { loaded++; if (loaded >= 2) { while (waiters.length) { try { waiters.shift()(); } catch (e) { console.error(e); } } } }
-  atlas.onload = done; textImg.onload = done;
+  let loaded = 0, settled = 0; const waiters = [];
+  function finish(ok) {
+    settled++; if (ok) loaded++;
+    if (settled >= 2) {
+      document.documentElement.classList.toggle('sprites-unavailable', loaded < 2);
+      while (waiters.length) { try { waiters.shift()(); } catch (e) { console.error(e); } }
+    }
+  }
+  atlas.onload = function () { finish(true); }; textImg.onload = function () { finish(true); };
+  atlas.onerror = function () { console.warn('[Sprites] weapon atlas failed to load'); finish(false); };
+  textImg.onerror = function () { console.warn('[Sprites] menu text atlas failed to load'); finish(false); };
   atlas.src = SPRITE_ATLAS_SRC; textImg.src = TEXT_ATLAS_SRC;
 
-  function ready() { return loaded >= 2; }
-  function whenReady(fn) { if (ready()) fn(); else waiters.push(fn); }
+  function ready() { return loaded === 2; }
+  function whenReady(fn) { if (settled >= 2) fn(); else waiters.push(fn); }
 
   /* Draw frame i of animation "name" with its anchor at (x, y). */
   function draw(ctx, name, i, x, y, rot, scale, alpha) {

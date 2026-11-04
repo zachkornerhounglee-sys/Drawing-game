@@ -1,12 +1,45 @@
-# Canvas Combat & Cartography — Version 4
+# Canvas Combat & Cartography — Version 9
+
+Draw the arena, draw your weapon, brawl. Peer-to-peer multiplayer over WebRTC (PeerJS), no server of your own.
+
+## Files (all go in the SAME folder, next to each other)
+
+| File | What it is |
+|---|---|
+| `index.html` | Page layout; loads the files below |
+| `style.css` | All styling |
+| `network.js` | PeerJS multiplayer layer |
+| `classifier.js` | Weapon table + icons, trained weapon recognizer, drawing pad |
+| `sprites.js` | Embedded pixel-art sprite atlases (bow, arrows, slashes, elements, boiling title text) |
+| `menu.js` | Title menu, settings, **update log** |
+| `engine.js` | Game loop, physics, combat, bots, rendering, online sync |
+| `manifest.json` | Web-app manifest |
 
 ## Publish on GitHub Pages
-1. Extract this ZIP.
-2. Upload `index.html` and `manifest.json` to the root of your GitHub repository, replacing the previous versions.
-3. In **Settings → Pages**, publish from your main branch and `/ (root)`.
-4. After the site updates, press **Ctrl + F5** to bypass the browser cache.
+1. Upload **every file above** to the root of your repository (replace the old ones).
+2. **Settings → Pages**: deploy from your main branch, `/ (root)`.
+3. After it publishes, press **Ctrl + F5** once to clear the cached old version.
+4. Open the site, choose **Play → Multiplayer**, copy the invite link, send it to friends.
 
-## Change in this version
-Drawn weapons are now attached to a visible hand/forearm. The pivot and scale are adjusted per weapon type so the handle is near the hand and the weapon extends outward in the direction the pilot aims. The selected weapon appearance is based on the recognized type (sword, blaster, barrier, staff, bow, battleaxe, shuriken, or warhammer).
+If a file is missing the status box (top right) says `GAME FILES NOT LOADED`.
+You can also double-click `index.html` to play solo offline.
 
-The game is a 2D canvas game; these are in-game weapon drawings, not 3D models.
+## What's new in v9
+- 6 new weapons (14 total): Spear, Boomerang, Bomb, Storm Rod, Whip, Cyclone.
+- New trained weapon recognizer with a live top-3 guess while you draw, Undo (Ctrl+Z) and a runner-up line.
+- Fall-through fixed (players pushed into platforms when stacking; void respawns into thin air).
+- Mouse aim restored (Settings can switch to facing-only), working knockback, double jump, drop-through (hold S).
+- Multiplayer: host keeps running in a background tab, interpolation + prediction, compact snapshots, ping readout, silent-guest timeout, safer weapon-art transfer, extra STUN/TURN servers.
+- Performance: cached stage layers and glows, DOM updates only on change, adaptive quality.
+
+The full list is in the in-game **UPDATE LOG** (title menu).
+
+## Tested
+Headless and in real Chromium (two pages over real WebRTC through a local signalling server): 23/23 end-to-end checks on this exact file set;
+recognizer 97–99% on 4,200 generated sketches (~83% on drawing styles it never trained on);
+0 fall-throughs in 3,000 standing and 300 head-landing trials; 21 → 43 fps with 11 fighters in the same test machine.
+
+## Not tested / limits
+- Two different real networks over the internet, mobile browsers, Firefox, Safari.
+- Strict firewalls that block WebRTC entirely need your own relay server; a custom PeerJS server can be set with `window.CCC_PEER_CONFIG = { host, port, path, secure }`.
+- Unusual weapon designs can still be misread (axe vs hammer most often). Check the live guess and redraw before equipping.

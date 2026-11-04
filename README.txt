@@ -1,38 +1,34 @@
 CANVAS COMBAT & CARTOGRAPHY - VERSION 9
 
+FILES (upload ALL of them into the same folder, next to index.html)
+  index.html     page layout
+  style.css      styling
+  network.js     PeerJS multiplayer
+  classifier.js  weapons, trained recognizer, drawing pad
+  sprites.js     embedded pixel-art sprites
+  menu.js        title menu, settings, update log
+  engine.js      game loop, physics, combat, rendering, online sync
+  manifest.json  web-app manifest
+
 GitHub Pages setup
-1. Upload index.html to the ROOT of your GitHub repository, replacing the previous index.html.
-2. Commit and wait for GitHub Pages to publish. (This is a single self-contained file: sprites,
-   weapon-recognition model and all code are embedded.)
-3. Open the published link, choose Play > Multiplayer, copy the invite link and send it to friends.
-   Friends open the invite link directly; it skips the title menu.
+1. Upload every file above to the ROOT of your repository, replacing the old ones.
+2. Settings > Pages: deploy from main branch, / (root).
+3. When it publishes press Ctrl+F5 once to clear the cached old version.
+4. Open the site, Play > Multiplayer, copy the invite link and send it to friends.
+   Friends open the invite link directly (it skips the title menu).
+If any file is missing the status box (top right) says "GAME FILES NOT LOADED".
+Double-clicking index.html plays solo offline.
 
-What's new (also in the in-game UPDATE LOG on the title menu)
-- 6 new weapons (14 total): Spear, Boomerang, Bomb, Storm Rod (chain lightning), Whip, Cyclone.
-- New weapon recognizer (trained model, 132 shape features) with a LIVE GUESS panel, Undo (Ctrl+Z)
-  and a runner-up line in the equip notification.
-- Fall-through fixed (two causes: players pushed down into platforms when they landed on each
-  other, and void respawns into thin air that could leave you alive at 0 HP).
-- Mouse aim is back (Settings can switch to facing-only), knockback works, invisible tiles removed.
-- Double jump, ledge grace time, drop-through (hold S).
-- Multiplayer: host keeps running in a background tab, interpolation + client prediction, compact
-  snapshots, ping readout, silent-guest timeout, safer weapon-art transfer, more STUN + TURN relays.
-- Performance: cached stage layers, cached glows, DOM updates only on change, adaptive quality.
+WHAT'S NEW IN V9 (full list in the in-game UPDATE LOG on the title menu)
+- 6 new weapons (14 total): Spear, Boomerang, Bomb, Storm Rod, Whip, Cyclone.
+- New trained weapon recognizer, live top-3 guess while drawing, Undo (Ctrl+Z).
+- Fall-through fixed; knockback fixed; mouse aim back (Settings can switch); double jump; drop-through (S).
+- Multiplayer: host runs in a background tab, interpolation + prediction, compact snapshots, ping, silent-guest timeout.
+- Performance: cached layers and glows, change-only DOM updates, adaptive quality.
 
-Testing done on this build (headless + real Chromium)
-- Recognizer: 97-99% on 4,200 generated mouse sketches across 14 weapons; ~83% on drawing styles it
-  never trained on. 24/24 shapes drawn through the real pad were read correctly.
-- Physics: 0 of 3,000 standing / 0 of 300 head-landing players fell through (v8 logic: 1000/1000
-  head-landings fell in a replay). 60 s brawl with all 14 weapons: no zombies, no void escapes.
-- Multiplayer: two Chromium pages over real WebRTC via a local signalling server: join, weapon sync,
-  movement agreement, jump, ping, host with rendering frozen, guest leaving: 23/23 checks.
-- Speed (same machine, 11 fighters): 21 fps -> 43 fps, main-thread load 102% -> 79%.
-
-Known limits
-- Online play uses public PeerJS signalling and public STUN/TURN servers. If a network blocks WebRTC
-  entirely, a static GitHub Pages site cannot relay game traffic; you would need your own relay.
-  A custom PeerJS server can be set with window.CCC_PEER_CONFIG = { host, port, path, secure }.
-- Not tested: a real internet connection between two different networks, mobile browsers, or
-  Firefox / Safari.
-- Very unusual weapon designs can still be misread (axe vs hammer is the usual confusion); watch the
-  live guess and redraw or Undo before equipping.
+TESTED: 23/23 end-to-end checks in real Chromium (two players over WebRTC) on this exact file set;
+recognizer 97-99% on 4,200 generated sketches (~83% on unfamiliar styles); 0 fall-throughs in 3,300 trials;
+21 -> 43 fps with 11 fighters on the same test machine.
+NOT TESTED: two different real networks, mobile, Firefox, Safari.
+LIMITS: strict firewalls that block WebRTC need your own relay; unusual weapon designs can be misread
+(axe vs hammer most often) - check the live guess and redraw before equipping.
